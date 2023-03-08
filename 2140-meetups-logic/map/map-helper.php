@@ -1,9 +1,5 @@
 <?php
 
-$upload_dir = wp_upload_dir();
-
-define("LEAFLET_FILE", $upload_dir['basedir'] . '/map/geo.json');
-
 // ################## WRITE DATE IN THE GEO.JSON FILE
 // ----------------------------------------------------
 

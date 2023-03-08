@@ -11,8 +11,27 @@
 
 defined('ABSPATH') or die('Get out!');
 
-include(plugin_dir_path(__FILE__) . 'map/helper.php');
+// External integration for maps and btcmaps
+include(plugin_dir_path(__FILE__) . 'map/map-helper.php');
 include(plugin_dir_path(__FILE__) . 'map/map-functions.php');
+include(plugin_dir_path(__FILE__) . 'map/btcmap-helper.php');
+include(plugin_dir_path(__FILE__) . 'map/btcmap-functions.php');
+
+// Map integration constants
+$upload_dir = wp_upload_dir();
+
+define("LEAFLET_FILE", $upload_dir['basedir'] . '/map/geo.json');
+const UPDATE = 'update';
+const DELETE = 'delete';
+const PIN_COLOR = "#FA402B";
+const PIN_SIZE = "medium";
+
+// btcmap integration constants
+define("BTCMAP_FOLDER", $upload_dir['basedir'] . '/btcmap/');
+const NOMINATIM_OPENSTREETMAP = "https://nominatim.openstreetmap.org/search?format=json&polygon_geojson=1&polygon_threshold=0.1&city=%s&country=%s&email=hello@2140meetups.com";
+const CITY_NINJA = "https://api.api-ninjas.com/v1/city?name=%s";
+const NINJA_API_KEY = "X-Api-Key: NzxkJE6bvL21d74+NO2utg==1gI8opsbqP7Dpm9k";
+
 
 /* 
  * Backend - Limit users to see only posts they own 
@@ -554,9 +573,10 @@ function create_map_pointer_geojson($post_id, $post, $update)
         return;
     }
 
-    // Only add/update marker post being published
+    // Only add/update marker on post being published
     if ($post->post_status === 'publish') {
-        // Update or create post
+        
+        // Generate GEOJSON for our map in home
         $action = 'update';
         $latitude = get_post_meta($post_id, 'lat', true);
         $longitude = get_post_meta($post_id, 'lon', true);
@@ -568,6 +588,69 @@ function create_map_pointer_geojson($post_id, $post, $update)
     return;
 }
 add_action('wp_insert_post', 'create_map_pointer_geojson', 11, 3);
+
+/**
+ * Backend - Create/update btcmap area data in /btcmap/ on post update (from draft to published)
+ */
+function create_btcmap_area($post_id, $post, $update)
+{
+
+    // If this is a revision or not a community or not a delete, exit
+    if (wp_is_post_revision($post_id) || $post->post_type != 'comunidad')
+        return;
+
+    // Are we deleting the post?
+    if ($post->post_status === 'trash') {
+        $action = 'delete';
+        //generate_new_geo_json_map($post_id, $action);
+
+        return;
+    }
+
+    // Only add/update btcmap area json on post being published
+    if ($post->post_status === 'publish') {
+        
+        $author_id = $post->post_author;
+
+        $data = array(
+            "id"		=> $post_id,
+            "email"		=> get_the_author_meta( 'email', $author_id ),
+            "telegram"	=> get_post_meta($post_id, 'telegram', true),
+            "imagen"	=> get_the_post_thumbnail_url($post_id,'full'),
+            "nombre"	=> $post->post_title,
+            "ciudad"	=> get_post_meta($post_id, 'ciudad', true),
+            "pais"		=> get_post_meta($post_id, 'pais', true)
+        );
+        
+        generate_area_from_btcmap($data);
+    }
+
+    return;
+}
+add_action('wp_insert_post', 'create_btcmap_area', 12, 3);
+
+/**
+ * Backend - Create callback function that embeds our phrase in a WP_REST_Response
+ */
+function prefix_get_endpoint_phrase() {
+    // rest_ensure_response() wraps the data we want to return into a WP_REST_Response, and ensures it will be properly returned.
+    return rest_ensure_response( btc_maps_endpoint() );
+}
+
+/**
+ * Backend - Function to register our routes for our example endpoint.
+ */
+function prefix_register_btcmap_routes() {
+    // register_rest_route() handles more arguments but we are going to stick to the basics for now.
+    register_rest_route( 'btcmap/v1', '/communities', array(
+        // By using this constant we ensure that when the WP_REST_Server changes our readable endpoints will work as intended.
+        'methods'  => WP_REST_Server::READABLE,
+        // Here we register our callback. The callback is fired when this endpoint is matched by the WP_REST_Server class.
+        'callback' => 'prefix_get_endpoint_phrase',
+    ) );
+}
+
+add_action( 'rest_api_init', 'prefix_register_btcmap_routes' );
 
 /*
  * Frontend - block all users but admin to access the backend

@@ -1,12 +1,5 @@
 <?php
 
-// Operation types to interact with the JSON file
-const UPDATE = 'update';
-const DELETE = 'delete';
-
-const PIN_COLOR = "#FA402B";
-const PIN_SIZE = "medium";
-
 //############## PIN OBJECT CREATION
 //-------------------------------------
 
