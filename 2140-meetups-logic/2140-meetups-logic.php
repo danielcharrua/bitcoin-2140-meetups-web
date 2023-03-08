@@ -631,8 +631,9 @@ add_action('wp_insert_post', 'create_btcmap_area', 12, 3);
 
 /**
  * Backend - Create callback function that embeds our phrase in a WP_REST_Response
+ * https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#creating-endpoints
  */
-function prefix_get_endpoint_phrase() {
+function btcmap_get_endpoint_communities() {
     // rest_ensure_response() wraps the data we want to return into a WP_REST_Response, and ensures it will be properly returned.
     return rest_ensure_response( btc_maps_endpoint() );
 }
@@ -646,7 +647,7 @@ function prefix_register_btcmap_routes() {
         // By using this constant we ensure that when the WP_REST_Server changes our readable endpoints will work as intended.
         'methods'  => WP_REST_Server::READABLE,
         // Here we register our callback. The callback is fired when this endpoint is matched by the WP_REST_Server class.
-        'callback' => 'prefix_get_endpoint_phrase',
+        'callback' => 'btcmap_get_endpoint_communities',
     ) );
 }
 
