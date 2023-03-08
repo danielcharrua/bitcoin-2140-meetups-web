@@ -630,7 +630,7 @@ function create_btcmap_area($post_id, $post, $update)
 add_action('wp_insert_post', 'create_btcmap_area', 12, 3);
 
 /**
- * Backend - Create callback function that embeds our phrase in a WP_REST_Response
+ * Backend - Create callback function that embeds our response in a WP_REST_Response
  * https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#creating-endpoints
  */
 function btcmap_get_endpoint_communities() {
@@ -639,9 +639,46 @@ function btcmap_get_endpoint_communities() {
 }
 
 /**
+ * Backend - Create callback function that embeds our response in a WP_REST_Response
+ * https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#creating-endpoints
+ */
+function btcmap_get_endpoint_loop_communities() {
+
+    $args = array(
+        'post_type'   => 'comunidad',
+        'post_status' => 'publish',
+        'numberposts' => 100,
+    );
+
+    $communities = get_posts($args);
+
+    foreach ( $communities as $community ) {
+        $author_id = $community->post_author;
+
+        $data = array(
+            "id"		=> $community->ID,
+            "email"		=> get_the_author_meta( 'email', $author_id ),
+            "telegram"	=> get_post_meta($community->ID, 'telegram', true),
+            "imagen"	=> get_the_post_thumbnail_url($community->ID,'full'),
+            "nombre"	=> $community->post_title,
+            "ciudad"	=> get_post_meta($community->ID, 'ciudad', true),
+            "pais"		=> get_post_meta($community->ID, 'pais', true)
+        );
+    
+        // Sleep for two seconds if not nominatim complains, zZzZZzzz....
+        sleep(2);
+
+        generate_area_from_btcmap($data);
+    }
+
+    // rest_ensure_response() wraps the data we want to return into a WP_REST_Response, and ensures it will be properly returned.
+    return rest_ensure_response( 'Loop created OK' );
+}
+
+/**
  * Backend - Function to register our routes for our example endpoint.
  */
-function prefix_register_btcmap_routes() {
+function btcmap_register_routes() {
     // register_rest_route() handles more arguments but we are going to stick to the basics for now.
     register_rest_route( 'btcmap/v1', '/communities', array(
         // By using this constant we ensure that when the WP_REST_Server changes our readable endpoints will work as intended.
@@ -649,9 +686,16 @@ function prefix_register_btcmap_routes() {
         // Here we register our callback. The callback is fired when this endpoint is matched by the WP_REST_Server class.
         'callback' => 'btcmap_get_endpoint_communities',
     ) );
+
+    register_rest_route( 'btcmap/v1', '/loop', array(
+        // By using this constant we ensure that when the WP_REST_Server changes our readable endpoints will work as intended.
+        'methods'  => WP_REST_Server::READABLE,
+        // Here we register our callback. The callback is fired when this endpoint is matched by the WP_REST_Server class.
+        'callback' => 'btcmap_get_endpoint_loop_communities',
+    ) );
 }
 
-add_action( 'rest_api_init', 'prefix_register_btcmap_routes' );
+add_action( 'rest_api_init', 'btcmap_register_routes' );
 
 /*
  * Frontend - block all users but admin to access the backend
