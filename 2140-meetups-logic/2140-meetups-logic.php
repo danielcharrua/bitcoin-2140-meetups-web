@@ -12,10 +12,10 @@
 defined('ABSPATH') or die('Get out!');
 
 // External integration for maps and btcmaps
-include(plugin_dir_path(__FILE__) . 'map/map-helper.php');
-include(plugin_dir_path(__FILE__) . 'map/map-functions.php');
-include(plugin_dir_path(__FILE__) . 'map/btcmap-helper.php');
-include(plugin_dir_path(__FILE__) . 'map/btcmap-functions.php');
+include(plugin_dir_path(__FILE__) . 'map/helper.php');
+include(plugin_dir_path(__FILE__) . 'map/functions.php');
+include(plugin_dir_path(__FILE__) . 'btcmap/helper.php');
+include(plugin_dir_path(__FILE__) . 'btcmap/functions.php');
 
 // Map integration constants
 $upload_dir = wp_upload_dir();
