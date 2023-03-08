@@ -30,7 +30,7 @@ const PIN_SIZE = "medium";
 define("BTCMAP_FOLDER", $upload_dir['basedir'] . '/btcmap/');
 const NOMINATIM_OPENSTREETMAP = "https://nominatim.openstreetmap.org/search?format=json&polygon_geojson=1&polygon_threshold=0.1&city=%s&country=%s&email=hello@2140meetups.com";
 const CITY_NINJA = "https://api.api-ninjas.com/v1/city?name=%s";
-const NINJA_API_KEY = "NzxkJE6bvL21d74+NO2utg==1gI8opsbqP7Dpm9k";
+// const NINJA_API_KEY defined in wp-config.php;
 
 
 /* 
