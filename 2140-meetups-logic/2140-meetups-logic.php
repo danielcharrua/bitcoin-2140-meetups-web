@@ -14,7 +14,6 @@ defined('ABSPATH') or die('Get out!');
 include(plugin_dir_path(__FILE__) . 'map/helper.php');
 include(plugin_dir_path(__FILE__) . 'map/map-functions.php');
 
-
 /* 
  * Backend - Limit users to see only posts they own 
  * 
@@ -34,6 +33,81 @@ function posts_for_current_author($query)
     return $query;
 }
 add_filter('pre_get_posts', 'posts_for_current_author');
+
+/*
+ * Frontend - Populate address field only if editing (must exist the get parameter $_GET['cptid'])
+ * 
+ * @link https://docs.gravityforms.com/gform_field_value_parameter_name/
+ */
+function populate_address( $value, $field, $name ) {
+		
+	if (!isset($_GET['cptid'])) {
+		return;
+	}
+	
+	$form = $field['formId'];
+	
+	$post = get_post($_GET['cptid']);
+	
+	if ($form === 1){
+		$address = get_post_meta($post->ID, 'direccion', true);
+	} else {
+		$address = get_post_meta($post->ID, 'direccion', true);
+	}
+		
+   	return $address;
+}
+add_filter( 'gform_field_value_address', 'populate_address', 10, 3 );
+
+/*
+ * Frontend - Populate city address field only if editing (must exist the get parameter $_GET['cptid'])
+ * 
+ * @link https://docs.gravityforms.com/gform_field_value_parameter_name/
+ */
+function populate_city( $value, $field, $name ) {
+		
+	if (!isset($_GET['cptid'])) {
+		return;
+	}
+	
+	$form = $field['formId'];
+	
+	$post = get_post($_GET['cptid']);
+	
+	if ($form === 1){
+		$city = get_post_meta($post->ID, 'ciudad', true);
+	} /*else {
+		$address = get_post_meta($post->ID, 'direccion', true);
+	}*/
+		
+   	return $city;
+}
+add_filter( 'gform_field_value_city', 'populate_city', 10, 3 );
+
+/*
+ * Frontend - Populate country address field only if editing (must exist the get parameter $_GET['cptid'])
+ * 
+ * @link https://docs.gravityforms.com/gform_field_value_parameter_name/
+ */
+function populate_country( $value, $field, $name ) {
+		
+	if (!isset($_GET['cptid'])) {
+		return;
+	}
+	
+	$form = $field['formId'];
+	
+	$post = get_post($_GET['cptid']);
+	
+	if ($form === 1){
+		$country = get_post_meta($post->ID, 'pais', true);
+	} /*else {
+		$address = get_post_meta($post->ID, 'direccion', true);
+	}*/
+		
+   	return $country;
+}
+add_filter( 'gform_field_value_country', 'populate_country', 10, 3 );
 
 /*
  * Frontend - Dynamically Populating a Field with CPT
@@ -104,6 +178,38 @@ function populate_cats($form)
     return $form;
 }
 add_filter('gform_pre_render_2', 'populate_cats');
+
+/* 
+ * Frontend - Filter only future meetups and order them always by meetup date.
+ * This will affect all CPTs queries in frontend but the user dashboard (it will show all meetups)
+ * 
+ * @link https://developer.wordpress.org/reference/hooks/pre_get_posts/
+ */
+function filter_future_meetups_and_order($query)
+{
+    if (!is_admin() && !$query->is_main_query() && in_array($query->get('post_type'), array('meetup'))) {
+						
+		$query->set('meta_key', 'fecha');
+		$query->set('orderby', 'meta_value');
+		$query->set('order', 'ASC');
+		
+		//user dashboard (if not)
+		if (!is_page('61')){
+			$args =	array(
+				array(
+					'key'     => 'fecha',
+					'value'   => date('Y-m-d'),
+					'type'    => 'DATE',
+					'compare' => '>='
+				)
+			);
+			$query->set('meta_query', $args);
+		}
+		
+        return;
+    }
+}
+add_action('pre_get_posts', 'filter_future_meetups_and_order');
 
 /* 
  * Frontend - Limit users to see only posts they own. Used on https://2140meetups.com/home-usuario/ (ID 61) 
@@ -255,7 +361,7 @@ add_filter('gform_pre_send_email', 'cancel_admin_notifications_on_edit', 10, 4);
  */
 function limit_gravity_mce($mce_buttons)
 {
-    $mce_buttons = array('bold', 'italic', 'bullist');
+    $mce_buttons = array('bold', 'italic', 'bullist', 'link', 'unlink');
     return $mce_buttons;
 }
 add_filter('gform_rich_text_editor_buttons', 'limit_gravity_mce', 10, 2);
@@ -339,7 +445,7 @@ add_shortcode('meetup_edit_buttons', 'meetup_edit_link_shortcode');
 function logout_button_shortcode($atts)
 {
 
-    return '<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="' . wp_logout_url('/') . '">Log out</a></div>';
+    return '<div class="wp-block-button"><a class="wp-block-button__link wp-element-button logout_button" href="' . wp_logout_url('/') . '">Log out</a></div>';
 }
 add_shortcode('logout_button', 'logout_button_shortcode');
 
@@ -431,28 +537,6 @@ function auto_aprove_if_previous($post_id, $post, $update)
 add_action('wp_insert_post', 'auto_aprove_if_previous', 10, 3);
 
 /**
- * Backend - Auto approve communities (seems a pods bug)
- * 
- * @link https://developer.wordpress.org/reference/hooks/wp_insert_post/
- * @link https://developer.wordpress.org/reference/functions/wp_update_post/
- */
-/*function auto_aprove_community( $post_id, $post, $update ) {
-
-	// If this is a revision or is a post update, don't do anything
- 	if ( wp_is_post_revision( $post_id ) || $update === true || $post->post_type != 'comunidad')
-		return;
-	
-	$update_args = array(
-		'ID'           => $post_id,
-		'post_status'  => 'publish',
-  	);
- 
-	// Update the post into the database
-	wp_update_post( $update_args );
-}
-add_action( 'wp_insert_post', 'auto_aprove_community', 10, 3 );*/
-
-/**
  * Backend - Create/update map pointer in /map/geo.json on post update (from draft to published)
  */
 function create_map_pointer_geojson($post_id, $post, $update)
@@ -484,103 +568,6 @@ function create_map_pointer_geojson($post_id, $post, $update)
     return;
 }
 add_action('wp_insert_post', 'create_map_pointer_geojson', 11, 3);
-
-/*
- * Backend - Get nominatim from address inserted by user
- * 
- * @link https://developer.wordpress.org/reference/functions/wp_remote_get/ 
- */
-function charrua_geocode($address)
-{
-
-    // encode the address for URL
-    $address = urlencode($address);
-
-    $url = "http://nominatim.openstreetmap.org/?format=json&addressdetails=1&q={$address}&format=json&limit=1";
-
-    $response = wp_remote_get($url);
-
-    if (is_array($response) && !is_wp_error($response)) {
-        $resp = json_decode($response['body'], true);
-
-        $data = array(
-            'lat' => $resp[0]['lat'],
-            'lon' => $resp[0]['lon']
-        );
-
-        return $data;
-    }
-
-    return;
-}
-
-/**
- * Backend - Delete map pointer in /map/geo.json on post delete
- * 
- * @link https://developer.wordpress.org/reference/hooks/before_delete_post/
- */
-function delete_map_pointer_geojson($post_id, $post)
-{
-
-    // If this is a revision or not a community, exit
-    if (wp_is_post_revision($post_id) || $post->post_type != 'comunidad')
-        return;
-
-    $action = 'delete';
-
-    if (function_exists('generate_new_geo_json_map')) {
-        generate_new_geo_json_map($post_id, $action);
-    }
-
-    return;
-}
-//add_action( 'before_delete_post', 'delete_map_pointer_geojson', 10 );
-
-/*
- * Frontend - get coordinates from create community form
- * 
- * @link https://docs.gravityforms.com/gform_pre_submission/
- */
-function get_coordinates_from_community_form($form)
-{
-
-    // Get the date field.
-    $address_field_id = '3';
-    $address_field = GFAPI::get_field($form, $address_field_id);
-
-    // Get the date field value.
-    $value = $address_field->get_value_submission(array());
-
-    $coordinates = charrua_geocode($value);
-
-    // input_6 and 7 are the form coordinate hidden fields
-    $_POST['input_6'] = $coordinates['lat'];
-    $_POST['input_7'] = $coordinates['lon'];
-}
-add_action('gform_pre_submission_1', 'get_coordinates_from_community_form');
-
-/*
- * Frontend - get coordinates from create meetup form
- * 
- * @link https://docs.gravityforms.com/gform_pre_submission/
- */
-function get_coordinates_from_meetup_form($form)
-{
-
-    // Get the date field.
-    $address_field_id = '5';
-    $address_field = GFAPI::get_field($form, $address_field_id);
-
-    // Get the date field value.
-    $value = $address_field->get_value_submission(array());
-
-    $coordinates = charrua_geocode($value);
-
-    // input_10 and 11 are the form coordinate hidden fields
-    $_POST['input_10'] = $coordinates['lat'];
-    $_POST['input_11'] = $coordinates['lon'];
-}
-add_action('gform_pre_submission_2', 'get_coordinates_from_meetup_form');
 
 /*
  * Frontend - block all users but admin to access the backend

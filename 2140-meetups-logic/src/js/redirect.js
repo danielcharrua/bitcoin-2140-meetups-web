@@ -5,7 +5,7 @@ function countDown() {
     var timer = document.getElementById("timer");
     if (count > 0) {
         count--;
-        timer.innerHTML = "<p class='redirect-text'>Redirection in <br><span class='timer'>" + count + "</span></p>";
+        timer.innerHTML = "<span class='timer'>" + count + "</span></p>";
         setTimeout("countDown()", 1000);
     } else {
         window.location.href = redirect;
