@@ -20,7 +20,7 @@ function extract_local_data($community)
 	return array(
 		"id"	=> "2140_meetups_" . $community["id"],
 		"tags"	=> array(
-			"contact:email" 	=> "???",
+			"contact:email" 	=> $community["email"],
 			"contact:telegram" 	=> $community["telegram"],
 			"continent"			=> "???",
 			"icon:square"		=> $community["imagen"],
@@ -59,16 +59,10 @@ function request_remote_data($city, $country)
  */
 function get_area_geo_json($url) 
 {
-	$ch = curl_init();
-	// Construct the request
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
-    // Activate, if not it prints in the console
-    curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-	curl_setopt($ch, CURLOPT_URL, $url);
-	// Execute the request
-	$nominatim_response = curl_exec($ch);
-    curl_close($ch);
-	$parsed_nominatim_result = json_decode($nominatim_response);
+	$response = wp_remote_get( $url );
+	$body = wp_remote_retrieve_body( $response );
+	$parsed_nominatim_result = json_decode($body);
+
 	// Error control if we get the right nominatim response
 	if (!empty($parsed_nominatim_result))
 	{
@@ -99,27 +93,23 @@ function get_area_geo_json($url)
  */
 function get_city_population($url) 
 {
-	// Set the API key
-    $headers = array( NINJA_API_KEY);
-    $ch = curl_init();
-	// Construct the request
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
-	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    // Activate, if not it prints in the console
-    curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-	curl_setopt($ch, CURLOPT_URL, $url);
-	// Execute the request
-	$ninja_api_response = curl_exec($ch);
-	// Clear up CURL
-    curl_close($ch);
-	$parsed_result = json_decode($ninja_api_response);
+	$args = array(
+		'headers' => array(
+				'X-Api-Key' => NINJA_API_KEY,
+			)
+	);
+	
+	$response = wp_remote_get( $url, $args );
+	$body = wp_remote_retrieve_body( $response );
+	$parsed_result = json_decode($body);
+		
 	// Check if get the requested data
 	if (!array_key_exists("error", $parsed_result))
 	{
 		return $parsed_result[0]->population;
 	}
+	
 	return 0;
-
 }
 
 /**
