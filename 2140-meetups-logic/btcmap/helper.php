@@ -104,7 +104,7 @@ function get_city_population($url)
 	$parsed_result = json_decode($body);
 		
 	// Check if get the requested data
-	if (!array_key_exists("error", $parsed_result))
+	if (!empty($parsed_result))
 	{
 		return $parsed_result[0]->population;
 	}
