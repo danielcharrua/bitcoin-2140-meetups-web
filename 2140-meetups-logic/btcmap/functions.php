@@ -34,7 +34,6 @@ function btc_maps_endpoint()
         $community = get_community_file($file_name);
         array_push($communities, $community);
     }
-    $integration_communities = json_encode($communities, JSON_UNESCAPED_SLASHES);
     
-    return $integration_communities;
+    return $communities;
 }
