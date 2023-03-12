@@ -244,6 +244,13 @@ function posts_for_current_author_for_user_home($query)
         $query->set('author', $user_ID);
         $query->set('post_status', array('publish', 'draft'));
 
+        // order meetups by date DESC
+		if ( $query->get('post_type') == 'meetup'){
+			$query->set('meta_key', 'fecha');
+			$query->set('orderby', 'meta_value');
+			$query->set('order', 'DESC');
+		}
+
         return;
     }
 }
@@ -270,6 +277,11 @@ function limit_community_meetups_on_community_single($query)
                 'type'    => 'numeric',
             )
         ));
+
+        // order meetups by date DESC
+		$query->set('meta_key', 'fecha');
+		$query->set('orderby', 'meta_value');
+		$query->set('order', 'DESC');
 
         return;
     }
