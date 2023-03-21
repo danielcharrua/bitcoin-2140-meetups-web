@@ -5,11 +5,20 @@
  * Plugin URI: https://2140meetups.com
  * Description: Logic for the 2140meetups.com website
  * Version: 1.0.0
- * Author: Red, Gzuuus, Urajiro, Lunaticoin, Arkad, Dani
+ * Author: Gzuuus, Urajiro, danielpcostas
  * Author URI: https://2140meetups.com
  */
 
 defined('ABSPATH') or die('Get out!');
+
+/**
+ * Require composer and packages
+ */
+require plugin_dir_path(__FILE__) . 'vendor/autoload.php';
+
+// Download ICS
+use Spatie\IcalendarGenerator\Components\Event;
+use Spatie\IcalendarGenerator\Components\Calendar;
 
 // External integration for maps and btcmaps
 include(plugin_dir_path(__FILE__) . 'map/helper.php');
@@ -58,75 +67,78 @@ add_filter('pre_get_posts', 'posts_for_current_author');
  * 
  * @link https://docs.gravityforms.com/gform_field_value_parameter_name/
  */
-function populate_address( $value, $field, $name ) {
-		
-	if (!isset($_GET['cptid'])) {
-		return;
-	}
-	
-	$form = $field['formId'];
-	
-	$post = get_post($_GET['cptid']);
-	
-	if ($form === 1){
-		$address = get_post_meta($post->ID, 'direccion', true);
-	} else {
-		$address = get_post_meta($post->ID, 'direccion', true);
-	}
-		
-   	return $address;
+function populate_address($value, $field, $name)
+{
+
+    if (!isset($_GET['cptid'])) {
+        return;
+    }
+
+    $form = $field['formId'];
+
+    $post = get_post($_GET['cptid']);
+
+    if ($form === 1) {
+        $address = get_post_meta($post->ID, 'direccion', true);
+    } else {
+        $address = get_post_meta($post->ID, 'direccion', true);
+    }
+
+    return $address;
 }
-add_filter( 'gform_field_value_address', 'populate_address', 10, 3 );
+add_filter('gform_field_value_address', 'populate_address', 10, 3);
 
 /*
  * Frontend - Populate city address field only if editing (must exist the get parameter $_GET['cptid'])
  * 
  * @link https://docs.gravityforms.com/gform_field_value_parameter_name/
  */
-function populate_city( $value, $field, $name ) {
-		
-	if (!isset($_GET['cptid'])) {
-		return;
-	}
-	
-	$form = $field['formId'];
-	
-	$post = get_post($_GET['cptid']);
-	
-	if ($form === 1){
-		$city = get_post_meta($post->ID, 'ciudad', true);
-	} /*else {
+function populate_city($value, $field, $name)
+{
+
+    if (!isset($_GET['cptid'])) {
+        return;
+    }
+
+    $form = $field['formId'];
+
+    $post = get_post($_GET['cptid']);
+
+    if ($form === 1) {
+        $city = get_post_meta($post->ID, 'ciudad', true);
+    } /*else {
 		$address = get_post_meta($post->ID, 'direccion', true);
 	}*/
-		
-   	return $city;
+
+    return $city;
 }
-add_filter( 'gform_field_value_city', 'populate_city', 10, 3 );
+add_filter('gform_field_value_city', 'populate_city', 10, 3);
 
 /*
  * Frontend - Populate country address field only if editing (must exist the get parameter $_GET['cptid'])
  * 
  * @link https://docs.gravityforms.com/gform_field_value_parameter_name/
  */
-function populate_country( $value, $field, $name ) {
-		
-	if (!isset($_GET['cptid'])) {
-		return;
-	}
-	
-	$form = $field['formId'];
-	
-	$post = get_post($_GET['cptid']);
-	
-	if ($form === 1){
-		$country = get_post_meta($post->ID, 'pais', true);
-	} /*else {
+function populate_country($value, $field, $name)
+{
+
+    if (!isset($_GET['cptid'])) {
+        return;
+    }
+
+    $form = $field['formId'];
+
+    $post = get_post($_GET['cptid']);
+
+    if ($form === 1) {
+        $country = get_post_meta($post->ID, 'pais', true);
+    } /*else {
 		$address = get_post_meta($post->ID, 'direccion', true);
 	}*/
-		
-   	return $country;
+
+    return $country;
 }
-add_filter( 'gform_field_value_country', 'populate_country', 10, 3 );
+add_filter('gform_field_value_country', 'populate_country', 10, 3);
 
 /*
  * Frontend - Dynamically Populating a Field with CPT
@@ -207,24 +219,24 @@ add_filter('gform_pre_render_2', 'populate_cats');
 function filter_future_meetups_and_order($query)
 {
     if (!is_admin() && !$query->is_main_query() && in_array($query->get('post_type'), array('meetup'))) {
-						
-		$query->set('meta_key', 'fecha');
-		$query->set('orderby', 'meta_value');
-		$query->set('order', 'ASC');
-		
-		//user dashboard (if not)
-		if (!is_page('61')){
-			$args =	array(
-				array(
-					'key'     => 'fecha',
-					'value'   => date('Y-m-d'),
-					'type'    => 'DATE',
-					'compare' => '>='
-				)
-			);
-			$query->set('meta_query', $args);
-		}
-		
+
+        $query->set('meta_key', 'fecha');
+        $query->set('orderby', 'meta_value');
+        $query->set('order', 'ASC');
+
+        //user dashboard (if not)
+        if (!is_page('61')) {
+            $args =    array(
+                array(
+                    'key'     => 'fecha',
+                    'value'   => date('Y-m-d'),
+                    'type'    => 'DATE',
+                    'compare' => '>='
+                )
+            );
+            $query->set('meta_query', $args);
+        }
+
         return;
     }
 }
@@ -245,11 +257,11 @@ function posts_for_current_author_for_user_home($query)
         $query->set('post_status', array('publish', 'draft'));
 
         // order meetups by date DESC
-		if ( $query->get('post_type') == 'meetup'){
-			$query->set('meta_key', 'fecha');
-			$query->set('orderby', 'meta_value');
-			$query->set('order', 'DESC');
-		}
+        if ($query->get('post_type') == 'meetup') {
+            $query->set('meta_key', 'fecha');
+            $query->set('orderby', 'meta_value');
+            $query->set('order', 'DESC');
+        }
 
         return;
     }
@@ -279,9 +291,9 @@ function limit_community_meetups_on_community_single($query)
         ));
 
         // order meetups by date DESC
-		$query->set('meta_key', 'fecha');
-		$query->set('orderby', 'meta_value');
-		$query->set('order', 'DESC');
+        $query->set('meta_key', 'fecha');
+        $query->set('orderby', 'meta_value');
+        $query->set('order', 'DESC');
 
         return;
     }
@@ -587,7 +599,7 @@ function create_map_pointer_geojson($post_id, $post, $update)
 
     // Only add/update marker on post being published
     if ($post->post_status === 'publish') {
-        
+
         // Generate GEOJSON for our map in home
         $action = 'update';
         $latitude = get_post_meta($post_id, 'lat', true);
@@ -621,19 +633,19 @@ function create_btcmap_area($post_id, $post, $update)
 
     // Only add/update btcmap area json on post being published
     if ($post->post_status === 'publish') {
-        
+
         $author_id = $post->post_author;
 
         $data = array(
-            "id"		=> $post_id,
-            "email"		=> get_the_author_meta( 'email', $author_id ),
-            "telegram"	=> get_post_meta($post_id, 'telegram', true),
-            "imagen"	=> get_the_post_thumbnail_url($post_id,'full'),
-            "nombre"	=> $post->post_title,
-            "ciudad"	=> get_post_meta($post_id, 'ciudad', true),
-            "pais"		=> get_post_meta($post_id, 'pais', true)
+            "id"        => $post_id,
+            "email"        => get_the_author_meta('email', $author_id),
+            "telegram"    => get_post_meta($post_id, 'telegram', true),
+            "imagen"    => get_the_post_thumbnail_url($post_id, 'full'),
+            "nombre"    => $post->post_title,
+            "ciudad"    => get_post_meta($post_id, 'ciudad', true),
+            "pais"        => get_post_meta($post_id, 'pais', true)
         );
-        
+
         generate_area_from_btcmap($data);
     }
 
@@ -645,16 +657,18 @@ add_action('wp_insert_post', 'create_btcmap_area', 12, 3);
  * Backend - Create callback function that embeds our response in a WP_REST_Response
  * https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#creating-endpoints
  */
-function btcmap_get_endpoint_communities() {
+function btcmap_get_endpoint_communities()
+{
     // rest_ensure_response() wraps the data we want to return into a WP_REST_Response, and ensures it will be properly returned.
-    return rest_ensure_response( btc_maps_endpoint() );
+    return rest_ensure_response(btc_maps_endpoint());
 }
 
 /**
  * Backend - Create callback function that embeds our response in a WP_REST_Response
  * https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#creating-endpoints
  */
-function btcmap_get_endpoint_loop_communities() {
+function btcmap_get_endpoint_loop_communities()
+{
 
     $args = array(
         'post_type'   => 'comunidad',
@@ -664,19 +678,19 @@ function btcmap_get_endpoint_loop_communities() {
 
     $communities = get_posts($args);
 
-    foreach ( $communities as $community ) {
+    foreach ($communities as $community) {
         $author_id = $community->post_author;
 
         $data = array(
-            "id"		=> $community->ID,
-            "email"		=> get_the_author_meta( 'email', $author_id ),
-            "telegram"	=> get_post_meta($community->ID, 'telegram', true),
-            "imagen"	=> get_the_post_thumbnail_url($community->ID,'full'),
-            "nombre"	=> $community->post_title,
-            "ciudad"	=> get_post_meta($community->ID, 'ciudad', true),
-            "pais"		=> get_post_meta($community->ID, 'pais', true)
+            "id"        => $community->ID,
+            "email"        => get_the_author_meta('email', $author_id),
+            "telegram"    => get_post_meta($community->ID, 'telegram', true),
+            "imagen"    => get_the_post_thumbnail_url($community->ID, 'full'),
+            "nombre"    => $community->post_title,
+            "ciudad"    => get_post_meta($community->ID, 'ciudad', true),
+            "pais"        => get_post_meta($community->ID, 'pais', true)
         );
-    
+
         // Sleep for two seconds if not nominatim complains, zZzZZzzz....
         sleep(2);
 
@@ -684,30 +698,31 @@ function btcmap_get_endpoint_loop_communities() {
     }
 
     // rest_ensure_response() wraps the data we want to return into a WP_REST_Response, and ensures it will be properly returned.
-    return rest_ensure_response( 'Loop created OK' );
+    return rest_ensure_response('Loop created OK');
 }
 
 /**
  * Backend - Function to register our routes for our example endpoint.
  */
-function btcmap_register_routes() {
+function btcmap_register_routes()
+{
     // register_rest_route() handles more arguments but we are going to stick to the basics for now.
-    register_rest_route( 'btcmap/v1', '/communities', array(
+    register_rest_route('btcmap/v1', '/communities', array(
         // By using this constant we ensure that when the WP_REST_Server changes our readable endpoints will work as intended.
         'methods'  => WP_REST_Server::READABLE,
         // Here we register our callback. The callback is fired when this endpoint is matched by the WP_REST_Server class.
         'callback' => 'btcmap_get_endpoint_communities',
-    ) );
+    ));
 
-    register_rest_route( 'btcmap/v1', '/loop', array(
+    register_rest_route('btcmap/v1', '/loop', array(
         // By using this constant we ensure that when the WP_REST_Server changes our readable endpoints will work as intended.
         'methods'  => WP_REST_Server::READABLE,
         // Here we register our callback. The callback is fired when this endpoint is matched by the WP_REST_Server class.
         'callback' => 'btcmap_get_endpoint_loop_communities',
-    ) );
+    ));
 }
 
-add_action( 'rest_api_init', 'btcmap_register_routes' );
+add_action('rest_api_init', 'btcmap_register_routes');
 
 /*
  * Frontend - block all users but admin to access the backend
@@ -839,4 +854,108 @@ function delete_community_meetups($post_id, $post)
     }
 }
 
+/* 
+ * Backend - Enqueue download calendar js file.
+ */
+function enqueue_calendar_js()
+{
+    wp_enqueue_script('calendar-js', plugins_url('src/js/calendar.js', __FILE__), array('jquery'), '1.0.0', true);
+
+    wp_localize_script(
+        'calendar-js',
+        'data',
+        array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce'   => wp_create_nonce('download_calendar_nonce'),
+        )
+    );
+}
+add_action('wp_enqueue_scripts', 'enqueue_calendar_js');
+
+/* 
+ * Frontend - Add ICS file download to meetups.
+ */
+function download_meetup_ics_shortcode($atts)
+{
+    if (is_single() && get_post_type() == 'meetup') {
+
+        $fecha = get_post_meta(get_the_ID(), 'fecha', true);
+        $hora = get_post_meta(get_the_ID(), 'hora', true);
+        $direccion = get_post_meta(get_the_ID(), 'direccion', true);
+        $community_id = get_post_meta(get_the_ID(), 'comunidad', true);
+
+        // Datetime functions
+        $datetime = new DateTime($fecha . ' ' . $hora);
+        $start_date = $datetime->format('Y-m-d H:i:s');
+        $datetime->add(new DateInterval('PT1H'));
+        $end_date = $datetime->format('Y-m-d H:i:s');
+
+        // Display form
+        $content = '<div style="margin:20px 0;">';
+        $content .= '<form id="download-calendar-form" method="post">';
+        $content .= '<input type="hidden" name="name" value="' . get_the_title() . '">';
+        $content .= '<input type="hidden" name="starts_at" value="' . $start_date . '">';
+        $content .= '<input type="hidden" name="ends_at" value="' . $end_date . '">';
+        $content .= '<input type="hidden" name="address" value="' . $direccion . '">';
+        $content .= '<input type="hidden" name="image" value="' . get_the_post_thumbnail_url() . '">';
+        $content .= '<input type="hidden" name="community_id" value="' . $community_id . '">';
+        $content .= '<input type="hidden" name="description" value="' . esc_url(get_permalink()) . '">';
+        $content .= '<input type="submit" value="🗓 Agrega el meetup a tu calendario">';
+        $content .= '</form>';
+        $content .= '</div>';
+
+        return $content;
+    }
+}
+add_shortcode('download_meetup_ics', 'download_meetup_ics_shortcode');
+
+/**
+ * Ajax function to create and download ICS
+ *
+ */
+function download_meetup_calendar_handler()
+{
+
+    // This is a secure process to validate if this request comes from a valid source.
+    check_ajax_referer('download_calendar_nonce', 'security');
+
+    // tell the browser it's going to be a calendar file
+    header('Content-Type: text/calendar; charset=utf-8');
+
+    // tell the browser we want to save it instead of displaying it
+    header('Content-Disposition: attachment; filename="meetup.ics"');
+
+    // Get community timezone
+    $community_id  = $_POST['community_id'];
+    $community_lat = get_post_meta($community_id, 'lat', true);
+    $community_lon = get_post_meta($community_id, 'lon', true);
+
+    $geoapify = 'https://api.geoapify.com/v1/geocode/reverse?lat=' . $community_lat . '&lon=' . $community_lon . '&format=json&apiKey=' . GEOAPIFY_API_KEY;
+    $response = wp_remote_get($geoapify);
+    $timezone = '';
+
+    if ( is_array( $response ) && ! is_wp_error( $response ) ) {
+        $body = wp_remote_retrieve_body($response);
+        $result = json_decode($body, true);
+        $timezone = $result['results'][0]['timezone']['name'];
+    }
+
+    // Create event
+    $event = Event::create()
+        ->name($_POST['name'])
+        ->startsAt(new DateTime($_POST['starts_at'], new DateTimeZone($timezone)))
+        ->endsAt(new DateTime($_POST['ends_at'], new DateTimeZone($timezone)))
+        ->address($_POST['address'])
+        ->image($_POST['image'])
+        ->description($_POST['description']);
+
+    // Create calendar and download
+    $calendar = Calendar::create()->event($event);
+    echo $calendar->get();
+
+    wp_die();
+}
+add_action('wp_ajax_download_meetup_calendar', 'download_meetup_calendar_handler');
+add_action('wp_ajax_nopriv_download_meetup_calendar', 'download_meetup_calendar_handler');
+        
 /* necesitamos funcion que al validar y almacenar meetup (ambas por seguridad), chequee que la comunidad que se envía pertenece al mismo autor */
