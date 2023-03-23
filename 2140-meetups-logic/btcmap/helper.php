@@ -18,14 +18,14 @@ function merge_remote_and_local_data($remote_data, $local_data)
 function extract_local_data($community)
 {
 	return array(
-		"id"	=> "2140_meetups_" . $community["id"],
+		"id"	=> $community["id"],
 		"tags"	=> array(
 			"contact:email" 	=> $community["email"],
 			"contact:telegram" 	=> $community["telegram"],
-			"continent"			=> "???",
 			"icon:square"		=> $community["imagen"],
 			"name"				=> $community["nombre"],
-			"type"				=> "community"
+			"type"				=> "community",
+			"organization"		=> "2140-meetups"
 		)
 	);
 }
@@ -38,53 +38,98 @@ function extract_local_data($community)
  */
 function request_remote_data($city, $country)
 {
-	// Create the URL to make the request to get the area
+	// Get the continent and the osm_id
 	$URL_NOMINATIM = sprintf(NOMINATIM_OPENSTREETMAP, $city, $country);
-	$nominatim_object = get_area_geo_json($URL_NOMINATIM);
-	// Create the URL to make the request to get the city population
+	$continent_object = get_continent_of_city($URL_NOMINATIM);
+	
+	// Once we have the osm_id, request area of the city
+	$URL_POLYGONS = sprintf(POLYGONS_OPENSTREETMAP, $continent_object["osm_id"]);
+	$geo_json_object = get_city_area($URL_POLYGONS);
+	// We do not need anymore that field
+	unset($continent_object["osm_id"]);
+
+	// Fetch the city population
 	$URL_CITY_NINJA = sprintf(CITY_NINJA, $city);
     $city_population = get_city_population($URL_CITY_NINJA);
-	// Create an array to merge with the nominatim data
+	// Add city population data 
 	$population_data = array(
 		"population"		=> $city_population,
 		// The city population data request time
 		"population:date"	=> date("Y-m-d")
 	);
-	return array_merge($nominatim_object, $population_data);
+	return array_merge($continent_object, $population_data, $geo_json_object);
+}
+
+/**
+ * Create a generic utility to make remote calls
+ * @param $url: The endpoint
+ * @param $header: Optional parameter
+ * return array
+ */
+function make_get_request($url, $headers = array())
+{
+	if (!empty($headers))
+	{
+		$response = wp_remote_get( $url, $args );
+	} 
+	else
+	{
+		$response = wp_remote_get( $url );
+	}
+	// Extract the body from the response
+	$body = wp_remote_retrieve_body($response);
+	return json_decode($body);
+}
+
+function get_city_area($url)
+{
+	$parsed_area_result = make_get_request($url);
+	return array(
+		"geojson" => $parsed_area_result
+	);
 }
 
 /**
  * Prepare the area request for nominatim
  * @param $url: The request url
  */
-function get_area_geo_json($url) 
+function get_continent_of_city($url) 
 {
-	$response = wp_remote_get( $url );
-	$body = wp_remote_retrieve_body( $response );
-	$parsed_nominatim_result = json_decode($body);
+
+	// Execute the request
+	$parsed_nominatim_result = make_get_request($url);
+	$osm_id = null;
 
 	// Error control if we get the right nominatim response
-	if (!empty($parsed_nominatim_result))
+	if (
+		!empty($parsed_nominatim_result) && 
+		array_key_exists(0, $parsed_nominatim_result) &&
+		array_key_exists("address", $parsed_nominatim_result[0]) &&
+		array_key_exists("country_code", $parsed_nominatim_result[0]->address)
+	)
 	{
-		$nominatim_object = $parsed_nominatim_result[0];
-		return array(
-			"geo_json" => $nominatim_object->geojson,
-			// https://wiki.openstreetmap.org/wiki/Bounding_Box
-			"box:south" 	=> $nominatim_object->boundingbox[0],
-			"box:north" 	=> $nominatim_object->boundingbox[1],
-			"box:west" 		=> $nominatim_object->boundingbox[2],
-			"box:east" 		=> $nominatim_object->boundingbox[3]
-		);
-	} else 
-	{
-		return array(
-			"geo_json" => array(),
-			"box:south" 	=> 0,
-			"box:north" 	=> 0,
-			"box:west" 		=> 0,
-			"box:east" 		=> 0
-		);
+		$country_code = $parsed_nominatim_result[0]->address->country_code;
+		$osm_id = $parsed_nominatim_result[0]->osm_id;
+
+		$url = sprintf(COUNTRY_CODE, strtoupper($country_code));
+		// Execute the request
+		$parsed_nominatim_result = make_get_request($url);
+
+		if (
+			!empty($parsed_nominatim_result) && 
+			array_key_exists(0, $parsed_nominatim_result) &&
+			array_key_exists("continent", $parsed_nominatim_result[0])
+		) {
+			return array(
+				"continent" => $parsed_nominatim_result[0]->continent,
+				"osm_id"	=> $osm_id
+			);
+		}
 	}
+	return array(
+		"continent" => "",
+		"osm_id"	=> $osm_id
+	);
 }
 
 /**
@@ -93,22 +138,24 @@ function get_area_geo_json($url)
  */
 function get_city_population($url) 
 {
+	// Define the headers
 	$args = array(
 		'headers' => array(
 				'X-Api-Key' => NINJA_API_KEY,
 			)
 	);
-	
-	$response = wp_remote_get( $url, $args );
-	$body = wp_remote_retrieve_body( $response );
-	$parsed_result = json_decode($body);
+
+	$parsed_result = make_get_request($url, $args);
 		
 	// Check if get the requested data
-	if (!empty($parsed_result))
+	if (
+		!array_key_exists("error", $parsed_result) &&
+		array_key_exists(0, $parsed_result) &&
+		array_key_exists("population", $parsed_result[0])
+	)
 	{
 		return $parsed_result[0]->population;
 	}
-	
 	return 0;
 }
 
