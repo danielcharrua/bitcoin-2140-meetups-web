@@ -37,7 +37,7 @@
                      * Make ICS downloadable
                      */
                     var downloadLink = document.createElement("a");
-                    var fileData = ['\ufeff' + res];
+                    var fileData = [res];
 
                     var blobObject = new Blob(fileData, {
                         type: "text/calendar;charset=utf-8;"
