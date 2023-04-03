@@ -37,8 +37,11 @@ const PIN_SIZE = "medium";
 
 // btcmap integration constants
 define("BTCMAP_FOLDER", $upload_dir['basedir'] . '/btcmap/');
-const NOMINATIM_OPENSTREETMAP = "https://nominatim.openstreetmap.org/search?format=json&polygon_geojson=1&polygon_threshold=0.1&city=%s&country=%s&email=hello@2140meetups.com";
+const NOMINATIM_OPENSTREETMAP = "https://nominatim.openstreetmap.org/search?format=json&polygon_geojson=1&polygon_threshold=0.0003&city=%s&country=%s&email=hello@2140meetups.com&addressdetails=1";
 const CITY_NINJA = "https://api.api-ninjas.com/v1/city?name=%s";
+const POLYGONS_OPENSTREETMAP = "https://polygons.openstreetmap.fr/get_geojson.py?id=%s&params=0.020000-0.005000-0.005000";
+const POLYGONS_OPENSTREETMAP_MAP_GENERATION = "https://polygons.openstreetmap.fr/?id=%s";
+const COUNTRY_CODE = "https://countrycode.dev/api/countries/iso2/%s";
 // const NINJA_API_KEY defined in wp-config.php;
 
 
@@ -637,13 +640,14 @@ function create_btcmap_area($post_id, $post, $update)
         $author_id = $post->post_author;
 
         $data = array(
-            "id"        => $post_id,
-            "email"        => get_the_author_meta('email', $author_id),
-            "telegram"    => get_post_meta($post_id, 'telegram', true),
+            "id"        => $post->ID,
+            "id_btcmap" => sanitize_title(remove_emoji($post->post_title)),
+            "email"     => get_the_author_meta('email', $author_id),
+            "telegram"  => get_post_meta($post_id, 'telegram', true),
             "imagen"    => get_the_post_thumbnail_url($post_id, 'full'),
             "nombre"    => $post->post_title,
             "ciudad"    => get_post_meta($post_id, 'ciudad', true),
-            "pais"        => get_post_meta($post_id, 'pais', true)
+            "pais"      => get_post_meta($post_id, 'pais', true)
         );
 
         generate_area_from_btcmap($data);
@@ -683,12 +687,13 @@ function btcmap_get_endpoint_loop_communities()
 
         $data = array(
             "id"        => $community->ID,
-            "email"        => get_the_author_meta('email', $author_id),
-            "telegram"    => get_post_meta($community->ID, 'telegram', true),
+            "id_btcmap" => sanitize_title(remove_emoji($community->post_title)),
+            "email"     => get_the_author_meta('email', $author_id),
+            "telegram"  => get_post_meta($community->ID, 'telegram', true),
             "imagen"    => get_the_post_thumbnail_url($community->ID, 'full'),
             "nombre"    => $community->post_title,
             "ciudad"    => get_post_meta($community->ID, 'ciudad', true),
-            "pais"        => get_post_meta($community->ID, 'pais', true)
+            "pais"      => get_post_meta($community->ID, 'pais', true)
         );
 
         // Sleep for two seconds if not nominatim complains, zZzZZzzz....
@@ -957,5 +962,41 @@ function download_meetup_calendar_handler()
 }
 add_action('wp_ajax_download_meetup_calendar', 'download_meetup_calendar_handler');
 add_action('wp_ajax_nopriv_download_meetup_calendar', 'download_meetup_calendar_handler');
-        
+
+/*
+ * Remove emojis from string
+ */
+function remove_emoji($string)
+{
+    // Match Enclosed Alphanumeric Supplement
+    $regex_alphanumeric = '/[\x{1F100}-\x{1F1FF}]/u';
+    $clear_string = preg_replace($regex_alphanumeric, '', $string);
+
+    // Match Miscellaneous Symbols and Pictographs
+    $regex_symbols = '/[\x{1F300}-\x{1F5FF}]/u';
+    $clear_string = preg_replace($regex_symbols, '', $clear_string);
+
+    // Match Emoticons
+    $regex_emoticons = '/[\x{1F600}-\x{1F64F}]/u';
+    $clear_string = preg_replace($regex_emoticons, '', $clear_string);
+
+    // Match Transport And Map Symbols
+    $regex_transport = '/[\x{1F680}-\x{1F6FF}]/u';
+    $clear_string = preg_replace($regex_transport, '', $clear_string);
+    
+    // Match Supplemental Symbols and Pictographs
+    $regex_supplemental = '/[\x{1F900}-\x{1F9FF}]/u';
+    $clear_string = preg_replace($regex_supplemental, '', $clear_string);
+
+    // Match Miscellaneous Symbols
+    $regex_misc = '/[\x{2600}-\x{26FF}]/u';
+    $clear_string = preg_replace($regex_misc, '', $clear_string);
+
+    // Match Dingbats
+    $regex_dingbats = '/[\x{2700}-\x{27BF}]/u';
+    $clear_string = preg_replace($regex_dingbats, '', $clear_string);
+
+    return $clear_string;
+}
+
 /* necesitamos funcion que al validar y almacenar meetup (ambas por seguridad), chequee que la comunidad que se envía pertenece al mismo autor */

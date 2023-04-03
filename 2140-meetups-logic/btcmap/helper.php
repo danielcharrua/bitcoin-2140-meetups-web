@@ -18,7 +18,7 @@ function merge_remote_and_local_data($remote_data, $local_data)
 function extract_local_data($community)
 {
 	return array(
-		"id"	=> $community["id"],
+		"id"	=> $community["id_btcmap"],
 		"tags"	=> array(
 			"contact:email" 	=> $community["email"],
 			"contact:telegram" 	=> $community["telegram"],
@@ -43,8 +43,7 @@ function request_remote_data($city, $country)
 	$continent_object = get_continent_of_city($URL_NOMINATIM);
 	
 	// Once we have the osm_id, request area of the city
-	$URL_POLYGONS = sprintf(POLYGONS_OPENSTREETMAP, $continent_object["osm_id"]);
-	$geo_json_object = get_city_area($URL_POLYGONS);
+	$geo_json_object = get_city_area($continent_object["osm_id"]);
 	// We do not need anymore that field
 	unset($continent_object["osm_id"]);
 
@@ -70,7 +69,7 @@ function make_get_request($url, $headers = array())
 {
 	if (!empty($headers))
 	{
-		$response = wp_remote_get( $url, $args );
+		$response = wp_remote_get( $url, $headers );
 	} 
 	else
 	{
@@ -81,9 +80,37 @@ function make_get_request($url, $headers = array())
 	return json_decode($body);
 }
 
-function get_city_area($url)
+function get_city_area($osm_id)
 {
-	$parsed_area_result = make_get_request($url);
+	$get_url = sprintf(POLYGONS_OPENSTREETMAP, $osm_id);
+	$post_url = sprintf(POLYGONS_OPENSTREETMAP_MAP_GENERATION, $osm_id);
+
+	// Do post request to generate area data
+	$response = wp_remote_post( $post_url, array(
+		'method'      => 'POST',
+		'timeout'     => 45,
+		'redirection' => 5,
+		'httpversion' => '1.0',
+		'blocking'    => true,
+		'headers'     => array(),
+		'body'        => array(
+			'x' => '0.020000',
+			'y' => '0.005000',
+			'z' => '0.005000'
+		),
+		)
+	);
+	
+	if ( is_wp_error( $response ) ) {
+		$error_message = $response->get_error_message();
+		//echo "Something went wrong: $error_message";
+	} else {
+		//echo 'Response:<pre>';
+		//print_r( $response );
+		//echo '</pre>';
+	}
+
+	$parsed_area_result = make_get_request($get_url);
 	return array(
 		"geojson" => $parsed_area_result
 	);
@@ -104,8 +131,8 @@ function get_continent_of_city($url)
 	if (
 		!empty($parsed_nominatim_result) && 
 		array_key_exists(0, $parsed_nominatim_result) &&
-		array_key_exists("address", $parsed_nominatim_result[0]) &&
-		array_key_exists("country_code", $parsed_nominatim_result[0]->address)
+		property_exists($parsed_nominatim_result[0], "address") &&
+		property_exists($parsed_nominatim_result[0]->address, "country_code")
 	)
 	{
 		$country_code = $parsed_nominatim_result[0]->address->country_code;
@@ -118,7 +145,7 @@ function get_continent_of_city($url)
 		if (
 			!empty($parsed_nominatim_result) && 
 			array_key_exists(0, $parsed_nominatim_result) &&
-			array_key_exists("continent", $parsed_nominatim_result[0])
+			property_exists($parsed_nominatim_result[0], "continent")
 		) {
 			return array(
 				"continent" => $parsed_nominatim_result[0]->continent,
@@ -151,7 +178,7 @@ function get_city_population($url)
 	if (
 		!array_key_exists("error", $parsed_result) &&
 		array_key_exists(0, $parsed_result) &&
-		array_key_exists("population", $parsed_result[0])
+		property_exists($parsed_result[0], "population")
 	)
 	{
 		return $parsed_result[0]->population;
