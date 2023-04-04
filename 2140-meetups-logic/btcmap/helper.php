@@ -38,6 +38,15 @@ function extract_local_data($community)
  */
 function request_remote_data($city, $country)
 {
+	// Delete tildes to avoid empty result
+	$city_without_tilde = delete_tilde($city);
+	// Adapt the spaces to not break the GET request
+	$formatted_city = str_replace(' ', '%20', $city_without_tilde);
+	// Delete tildes to avoid empty result
+	$country_without_tilde = delete_tilde($country);
+	// Adapt the spaces to not break the GET request
+	$formatted_country = str_replace(' ', '%20', $country_without_tilde);
+
 	// Get the continent and the osm_id
 	$URL_NOMINATIM = sprintf(NOMINATIM_OPENSTREETMAP, $city, $country);
 	$continent_object = get_continent_of_city($URL_NOMINATIM);
@@ -176,6 +185,7 @@ function get_city_population($url)
 		
 	// Check if get the requested data
 	if (
+		!empty($parsed_result) &&
 		!array_key_exists("error", $parsed_result) &&
 		array_key_exists(0, $parsed_result) &&
 		property_exists($parsed_result[0], "population")
@@ -184,6 +194,51 @@ function get_city_population($url)
 		return $parsed_result[0]->population;
 	}
 	return 0;
+}
+
+/**
+ * Some API endpoints does not understand tildes
+ * @param chain: The word that we want to edit 
+ */
+function delete_tilde($chain) 
+{
+	// We encode the string in utf8 format in case we get errors
+	//$chain = utf8_encode($chain);
+
+	// Now we replace the letters
+	$chain = str_replace(
+		array('á', 'à', 'ä', 'â', 'ª', 'Á', 'À', 'Â', 'Ä'),
+		array('a', 'a', 'a', 'a', 'a', 'A', 'A', 'A', 'A'),
+		$chain
+	);
+
+	$chain = str_replace(
+		array('é', 'è', 'ë', 'ê', 'É', 'È', 'Ê', 'Ë'),
+		array('e', 'e', 'e', 'e', 'E', 'E', 'E', 'E'),
+		$chain );
+
+	$chain = str_replace(
+		array('í', 'ì', 'ï', 'î', 'Í', 'Ì', 'Ï', 'Î'),
+		array('i', 'i', 'i', 'i', 'I', 'I', 'I', 'I'),
+		$chain );
+
+	$chain = str_replace(
+		array('ó', 'ò', 'ö', 'ô', 'Ó', 'Ò', 'Ö', 'Ô'),
+		array('o', 'o', 'o', 'o', 'O', 'O', 'O', 'O'),
+		$chain );
+
+	$chain = str_replace(
+		array('ú', 'ù', 'ü', 'û', 'Ú', 'Ù', 'Û', 'Ü'),
+		array('u', 'u', 'u', 'u', 'U', 'U', 'U', 'U'),
+		$chain );
+
+	$chain = str_replace(
+		array('ñ', 'Ñ', 'ç', 'Ç'),
+		array('n', 'N', 'c', 'C'),
+		$chain
+	);
+
+	return $chain;
 }
 
 /**
