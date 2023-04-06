@@ -696,8 +696,8 @@ function btcmap_get_endpoint_loop_communities()
             "pais"      => get_post_meta($community->ID, 'pais', true)
         );
 
-        // Sleep for two seconds if not nominatim complains, zZzZZzzz....
-        sleep(2);
+        // Sleep for ten seconds if not nominatim complains, zZzZZzzz....
+        sleep(10);
 
         generate_area_from_btcmap($data);
     }
