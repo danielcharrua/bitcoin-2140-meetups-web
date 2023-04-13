@@ -38,64 +38,100 @@ function extract_local_data($community)
  */
 function request_remote_data($city, $country)
 {
-	// Delete tildes to avoid empty result
-	$city_without_tilde = delete_tilde($city);
-	// Adapt the spaces to not break the GET request
-	$formatted_city = str_replace(' ', '%20', $city_without_tilde);
-	// Delete tildes to avoid empty result
-	$country_without_tilde = delete_tilde($country);
-	// Adapt the spaces to not break the GET request
-	$formatted_country = str_replace(' ', '%20', $country_without_tilde);
+	$location = encode_community_location($city, $country);
 
-	// Get the continent and the osm_id
-	$URL_NOMINATIM = sprintf(NOMINATIM_OPENSTREETMAP, $city, $country);
-	$continent_object = get_continent_of_city($URL_NOMINATIM);
+	$URL_NOMINATIM = sprintf(NOMINATIM_OPENSTREETMAP, $location["city"], $location["country"]);
+	$community_metadata = get_community_metadata($URL_NOMINATIM, $city);
 	
 	// Once we have the osm_id, request area of the city
-	$geo_json_object = get_city_area($continent_object["osm_id"]);
-	// We do not need anymore that field
-	unset($continent_object["osm_id"]);
+	// IMPORTANT step that one because the first query to nominatim will be using city and country, 
+	// After that, all the queries will use the osm_id not city name
+	$geo_json_polygon = get_city_area($community_metadata["osm_id"]);
 
-	// Fetch the city population
-	$URL_CITY_NINJA = sprintf(CITY_NINJA, $city);
-    $city_population = get_city_population($URL_CITY_NINJA);
-	// Add city population data 
-	$population_data = array(
-		"population"		=> $city_population,
-		// The city population data request time
-		"population:date"	=> date("Y-m-d")
-	);
-	return array_merge($continent_object, $population_data, $geo_json_object);
+	$remote_data = array_merge($community_metadata, $geo_json_polygon);
+
+	preview_remote_results($remote_data, $city, $country);
+
+	return $remote_data;
 }
 
 /**
- * Create a generic utility to make remote calls
- * @param $url: The endpoint
- * @param $header: Optional parameter
- * return array
+ * Prepare the area request for nominatim
+ * @param $url: The request url
  */
-function make_get_request($url, $headers = array())
+function get_community_metadata($url, $city) 
 {
-	if (!empty($headers))
+	// Execute the request
+	$nominatim_response = make_get_request($url);
+	$location_metadata = json_decode($nominatim_response);
+	$osm_id = null;
+	
+	$nominatim_key = has_default_index($city);
+
+	// Error control if we get the right nominatim response
+	if (
+		!empty($location_metadata) && 
+		array_key_exists($nominatim_key, $location_metadata) &&
+		property_exists($location_metadata[$nominatim_key], "address") &&
+		property_exists($location_metadata[$nominatim_key]->address, "country_code"))
 	{
-		$response = wp_remote_get( $url, $headers );
-	} 
-	else
-	{
-		$response = wp_remote_get( $url );
+		// Important variable for community area
+		$osm_id = $location_metadata[$nominatim_key]->osm_id;
+
+		$country_code = $location_metadata[$nominatim_key]->address->country_code;
+		$url = sprintf(COUNTRY_CODE, strtoupper($country_code));
+		// Execute the request
+		$country_code_response = make_get_request($url);
+		
+		$parsed_nominatim_result = json_decode($country_code_response);
+
+		if (
+			!empty($parsed_nominatim_result) && 
+			array_key_exists(0, $parsed_nominatim_result) &&
+			property_exists($parsed_nominatim_result[0], "continent")) 
+		{
+			$city = get_city($location_metadata[$nominatim_key]->address);
+
+			return array(
+				"osm_id"	 		=> $osm_id,
+				"continent"  		=> $parsed_nominatim_result[$nominatim_key]->continent,
+				"population"		=> $location_metadata[$nominatim_key]->extratags->population,
+				"population:date"	=> $location_metadata[$nominatim_key]->extratags->{'population:date'},
+				// Extra data
+				"address"	 		=> $city . ", " . $location_metadata[$nominatim_key]->address->country,
+			);
+		}
 	}
-	// Extract the body from the response
-	$body = wp_remote_retrieve_body($response);
-	return json_decode($body);
+	return array(
+		"osm_id"	=> $osm_id,
+		"continent" => "",
+		"address"	=> ""
+	);
 }
 
+/**
+ * Not all the request has just one element. Some has more than one and are not in index 0
+ * @param $city
+ */
+function has_default_index($city)
+{
+	if ($city === "Retamar")
+	{
+		return 2;
+	}
+	return 0;
+}
+
+/**
+ * OpenStreetMap polygons are quite sharp, we want a bit more extense the area
+ * @param $url: The requested API endpoint
+ */
 function get_city_area($osm_id)
 {
-	$get_url = sprintf(POLYGONS_OPENSTREETMAP, $osm_id);
-	$post_url = sprintf(POLYGONS_OPENSTREETMAP_MAP_GENERATION, $osm_id);
-
-	// Do post request to generate area data
-	$response = wp_remote_post( $post_url, array(
+	// Generate the area that we want with a POST request
+	$POST_POLYGONS = sprintf(POLYGONS_OPENSTREETMAP_MAP_GENERATION, $osm_id);
+	// Create the body for the POST request
+	$body = array(
 		'method'      => 'POST',
 		'timeout'     => 45,
 		'redirection' => 5,
@@ -107,94 +143,81 @@ function get_city_area($osm_id)
 			'y' => '0.005000',
 			'z' => '0.005000'
 		),
-		)
 	);
-	
-	if ( is_wp_error( $response ) ) {
-		$error_message = $response->get_error_message();
-		//echo "Something went wrong: $error_message";
-	} else {
-		//echo 'Response:<pre>';
-		//print_r( $response );
-		//echo '</pre>';
-	}
+	// We do not care the response because we just want that it would be avaible that area
+	// AIM: Create the need it area JSON file
+	make_post_request($POST_POLYGONS);
 
-	$parsed_area_result = make_get_request($get_url);
+	// Once the JSON of area is generated, request it
+	$GET_POLYGONS = sprintf(POLYGONS_OPENSTREETMAP, $osm_id);
+	$area_response = make_get_request($GET_POLYGONS);
+	$parsed_area_result = json_decode($area_response);
+
 	return array(
 		"geojson" => $parsed_area_result
 	);
 }
 
 /**
- * Prepare the area request for nominatim
- * @param $url: The request url
+ * In nominatim not all the addresses has city. They might have instead village or town
+ * @param $address: The object that has the location metadata
  */
-function get_continent_of_city($url) 
+function get_city($address)
 {
-
-	// Execute the request
-	$parsed_nominatim_result = make_get_request($url);
-	$osm_id = null;
-
-	// Error control if we get the right nominatim response
-	if (
-		!empty($parsed_nominatim_result) && 
-		array_key_exists(0, $parsed_nominatim_result) &&
-		property_exists($parsed_nominatim_result[0], "address") &&
-		property_exists($parsed_nominatim_result[0]->address, "country_code")
-	)
+	if (property_exists($address, "city"))
 	{
-		$country_code = $parsed_nominatim_result[0]->address->country_code;
-		$osm_id = $parsed_nominatim_result[0]->osm_id;
-
-		$url = sprintf(COUNTRY_CODE, strtoupper($country_code));
-		// Execute the request
-		$parsed_nominatim_result = make_get_request($url);
-
-		if (
-			!empty($parsed_nominatim_result) && 
-			array_key_exists(0, $parsed_nominatim_result) &&
-			property_exists($parsed_nominatim_result[0], "continent")
-		) {
-			return array(
-				"continent" => $parsed_nominatim_result[0]->continent,
-				"osm_id"	=> $osm_id
-			);
-		}
+		return $address->city;
 	}
-	return array(
-		"continent" => "",
-		"osm_id"	=> $osm_id
-	);
+	else if (property_exists($address, "village"))
+	{
+		return $address->village;
+	} 
+	else if (property_exists($address, "town"))
+	{
+		return $address->town;
+	}
+	return "";
 }
 
 /**
- * Get the community city population
- * @param $url: Custom API ninja url
+ * If we have composed location format spaces and tildes in case it has
+ * @param $city
+ * @param $country
  */
-function get_city_population($url) 
+function encode_community_location($city, $country)
 {
-	// Define the headers
-	$args = array(
-		'headers' => array(
-				'X-Api-Key' => NINJA_API_KEY,
-			)
+	//print_r("DB => City: ". $city . ", Country: " . $country . "\n");
+	// Delete tildes to avoid empty result
+	$city_without_tilde = delete_tilde($city);
+	// Adapt the spaces to avoid empty result
+	$formatted_city = str_replace(' ', '%20', $city_without_tilde);
+	// Delete tildes to avoid empty result
+	$country_without_tilde = delete_tilde($country);
+	// Adapt the spaces to avoid empty result
+	$formatted_country = str_replace(' ', '%20', $country_without_tilde);
+	
+	return array(
+		"city"		=> $formatted_city,
+		"country"	=> $formatted_country
 	);
-
-	$parsed_result = make_get_request($url, $args);
-		
-	// Check if get the requested data
-	if (
-		!empty($parsed_result) &&
-		!array_key_exists("error", $parsed_result) &&
-		array_key_exists(0, $parsed_result) &&
-		property_exists($parsed_result[0], "population")
-	)
-	{
-		return $parsed_result[0]->population;
-	}
-	return 0;
 }
+
+function preview_remote_results($remote_data, $city, $country)
+{
+	$area = empty($remote_data["geojson"]) ? "NO" : "YES";
+	print_r($remote_data["osm_id"] . "\t\t" . $area . "\t\t" . $remote_data["population"] . "\t\t" . $remote_data["continent"] . "\t\t\t" . $remote_data["address"] . "\n");
+	print_r("=> DB: City: " . $city . ", Country: " . $country . "\n\n");
+}
+
+function preview_remote_results_header()
+{
+	print_r("OSM_ID\t\tHAS AREA\tPOPULATION\tCONTINENT\t\tADDRESS\n");
+}
+
+
+// #######################################################
+// ############### HELPER FUNCTIONS ######################
+// #######################################################
 
 /**
  * Some API endpoints does not understand tildes
@@ -242,21 +265,58 @@ function delete_tilde($chain)
 }
 
 /**
+ * Create a generic utility to make remote calls
+ * @param $url: The endpoint
+ * @param $header: Optional parameter
+ * return array
+ */
+function make_get_request($url, $headers = array())
+{
+	if (!empty($headers))
+	{
+		$response = wp_remote_get( $url, $headers );
+	} 
+	else
+	{
+		$response = wp_remote_get( $url );
+	}
+	// Extract the body from the response
+	$body = wp_remote_retrieve_body($response);
+	return json_decode($body);
+}
+
+/**
+ * A generic POST request
+ * @param $url: API endpoint
+ * @param $body: Request body
+ */
+function make_post_request($url, $body)
+{
+	$response = wp_remote_post($url, $body);
+	
+	if ( is_wp_error( $response ) ) 
+	{
+		$error_message = $response->get_error_message();
+		//echo "Something went wrong: $error_message";
+	}
+}
+
+/**
  * Create or update the area JSON file
  * @param $filename
  * @param $json_area: The content of the file
  */
 function update_btc_map_area_file($file_name, $json_area)
 {
-	file_put_contents(BTCMAP_FOLDER . $file_name, $json_area);
+	file_put_contents(BTCMAPS_FOLDER . $file_name, $json_area);
 }
 
 /**
- * Once we have all the community files created, get the file to serve BTCMap
+ * Once we have all the community files created, get the file to serve BTCMaps
  */
 function get_community_file($file_name)
 {
-	$community_json = file_get_contents(BTCMAP_FOLDER . $file_name);
+	$community_json = file_get_contents(BTCMAPS_FOLDER . $file_name);
 	// Decode the JSON file
 	$community = json_decode($community_json, true);
 	return $community;
