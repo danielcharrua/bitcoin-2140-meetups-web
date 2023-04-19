@@ -50,8 +50,6 @@ function request_remote_data($city, $country)
 
 	$remote_data = array_merge($community_metadata, $geo_json_polygon);
 
-	preview_remote_results($remote_data, $city, $country);
-
 	return $remote_data;
 }
 
@@ -201,19 +199,6 @@ function encode_community_location($city, $country)
 		"country"	=> $formatted_country
 	);
 }
-
-function preview_remote_results($remote_data, $city, $country)
-{
-	$area = empty($remote_data["geojson"]) ? "NO" : "YES";
-	print_r($remote_data["osm_id"] . "\t\t" . $area . "\t\t" . $remote_data["population"] . "\t\t" . $remote_data["continent"] . "\t\t\t" . $remote_data["address"] . "\n");
-	print_r("=> DB: City: " . $city . ", Country: " . $country . "\n\n");
-}
-
-function preview_remote_results_header()
-{
-	print_r("OSM_ID\t\tHAS AREA\tPOPULATION\tCONTINENT\t\tADDRESS\n");
-}
-
 
 // #######################################################
 // ############### HELPER FUNCTIONS ######################
