@@ -38,61 +38,49 @@ function extract_local_data($community)
  */
 function request_remote_data($city, $country)
 {
-	$location = encode_community_location($city, $country);
+	$URL_NOMINATIM = sprintf(NOMINATIM_OPENSTREETMAP, $osm_id);
+	$community_metadata = get_community_metadata($URL_NOMINATIM, $osm_id, $city);
 
-	$URL_NOMINATIM = sprintf(NOMINATIM_OPENSTREETMAP, $location["city"], $location["country"]);
-	$community_metadata = get_community_metadata($URL_NOMINATIM, $city);
-	
-	// Once we have the osm_id, request area of the city
-	// IMPORTANT step that one because the first query to nominatim will be using city and country, 
-	// After that, all the queries will use the osm_id not city name
-	$geo_json_polygon = get_city_area($community_metadata["osm_id"]);
+	$geo_json_polygon = get_city_area($osm_id);
 
 	$remote_data = array_merge($community_metadata, $geo_json_polygon);
+
+	preview_remote_results($remote_data, $city, $country);
 
 	return $remote_data;
 }
 
 /**
- * Prepare the area request for nominatim
+ * Get the city population and continent
  * @param $url: The request url
  */
-function get_community_metadata($url, $city) 
+function get_community_metadata($url, $osm_id, $city) 
 {
 	// Execute the request
 	$location_metadata = make_get_request($url);
-	$osm_id = null;
-	
-	$nominatim_key = has_default_index($city);
 
 	// Error control if we get the right nominatim response
 	if (
 		!empty($location_metadata) && 
-		array_key_exists($nominatim_key, $location_metadata) &&
-		property_exists($location_metadata[$nominatim_key], "address") &&
-		property_exists($location_metadata[$nominatim_key]->address, "country_code"))
+		property_exists($location_metadata, "country_code") &&
+		property_exists($location_metadata, "extratags"))
 	{
-		// Important variable for community area
-		$osm_id = $location_metadata[$nominatim_key]->osm_id;
+		print_r($location_metadata->extratags);
+		// Might not have the population date
+		$population_date = property_exists($location_metadata->extratags, "population:date") ? 
+			$location_metadata->extratags->{'population:date'} 
+			: 'na';
 
-		$country_code = $location_metadata[$nominatim_key]->address->country_code;
+		$nominatim_object = array(
+			"population"		=> $location_metadata->extratags->population,
+			"population:date"	=> $population_date,
+		);
+
+		$country_code = $location_metadata->country_code;
 		$url = sprintf(COUNTRY_CODE, strtoupper($country_code));
+
 		// Execute the request
 		$parsed_nominatim_result = make_get_request($url);
-		
-		$city = get_city($location_metadata[$nominatim_key]->address);
-		
-		$population_date = property_exists($location_metadata[$nominatim_key]->extratags, 'population:date') ?
-			$location_metadata[$nominatim_key]->extratags->{'population:date'} : 
-			'na';
-		
-		$nominatim_object = array(
-			"osm_id"	 		=> $osm_id,
-			"population"		=> $location_metadata[$nominatim_key]->extratags->population,
-			"population:date"	=> $population_date,
-			// Extra data
-			"address"	 		=> $city . ", " . $location_metadata[$nominatim_key]->address->country,
-		);
 			
 		if (
 			!empty($parsed_nominatim_result) && 
@@ -105,23 +93,9 @@ function get_community_metadata($url, $city)
 		return $nominatim_object;
 	}
 	return array(
-		"osm_id"	=> $osm_id,
-		"continent" => "",
-		"address"	=> ""
+		"continent" 	=> "",
+		"population"	=> ""
 	);
-}
-
-/**
- * Not all the request has just one element. Some has more than one and are not in index 0
- * @param $city
- */
-function has_default_index($city)
-{
-	if ($city === "Retamar")
-	{
-		return 2;
-	}
-	return 0;
 }
 
 /**
@@ -159,98 +133,9 @@ function get_city_area($osm_id)
 	);
 }
 
-/**
- * In nominatim not all the addresses has city. They might have instead village or town
- * @param $address: The object that has the location metadata
- */
-function get_city($address)
-{
-	if (property_exists($address, "city"))
-	{
-		return $address->city;
-	}
-	else if (property_exists($address, "village"))
-	{
-		return $address->village;
-	} 
-	else if (property_exists($address, "town"))
-	{
-		return $address->town;
-	}
-	return "";
-}
-
-/**
- * If we have composed location format spaces and tildes in case it has
- * @param $city
- * @param $country
- */
-function encode_community_location($city, $country)
-{
-	//print_r("DB => City: ". $city . ", Country: " . $country . "\n");
-	// Delete tildes to avoid empty result
-	$city_without_tilde = delete_tilde($city);
-	// Adapt the spaces to avoid empty result
-	$formatted_city = str_replace(' ', '%20', $city_without_tilde);
-	// Delete tildes to avoid empty result
-	$country_without_tilde = delete_tilde($country);
-	// Adapt the spaces to avoid empty result
-	$formatted_country = str_replace(' ', '%20', $country_without_tilde);
-	
-	return array(
-		"city"		=> $formatted_city,
-		"country"	=> $formatted_country
-	);
-}
-
 // #######################################################
 // ############### HELPER FUNCTIONS ######################
 // #######################################################
-
-/**
- * Some API endpoints does not understand tildes
- * @param chain: The word that we want to edit 
- */
-function delete_tilde($chain) 
-{
-	// We encode the string in utf8 format in case we get errors
-	//$chain = utf8_encode($chain);
-
-	// Now we replace the letters
-	$chain = str_replace(
-		array('á', 'à', 'ä', 'â', 'ª', 'Á', 'À', 'Â', 'Ä'),
-		array('a', 'a', 'a', 'a', 'a', 'A', 'A', 'A', 'A'),
-		$chain
-	);
-
-	$chain = str_replace(
-		array('é', 'è', 'ë', 'ê', 'É', 'È', 'Ê', 'Ë'),
-		array('e', 'e', 'e', 'e', 'E', 'E', 'E', 'E'),
-		$chain );
-
-	$chain = str_replace(
-		array('í', 'ì', 'ï', 'î', 'Í', 'Ì', 'Ï', 'Î'),
-		array('i', 'i', 'i', 'i', 'I', 'I', 'I', 'I'),
-		$chain );
-
-	$chain = str_replace(
-		array('ó', 'ò', 'ö', 'ô', 'Ó', 'Ò', 'Ö', 'Ô'),
-		array('o', 'o', 'o', 'o', 'O', 'O', 'O', 'O'),
-		$chain );
-
-	$chain = str_replace(
-		array('ú', 'ù', 'ü', 'û', 'Ú', 'Ù', 'Û', 'Ü'),
-		array('u', 'u', 'u', 'u', 'U', 'U', 'U', 'U'),
-		$chain );
-
-	$chain = str_replace(
-		array('ñ', 'Ñ', 'ç', 'Ç'),
-		array('n', 'N', 'c', 'C'),
-		$chain
-	);
-
-	return $chain;
-}
 
 /**
  * Create a generic utility to make remote calls

@@ -37,14 +37,15 @@ const PIN_SIZE = "medium";
 
 // btcmap integration constants
 define("BTCMAP_FOLDER", $upload_dir['basedir'] . '/btcmap/');
-const NOMINATIM_OPENSTREETMAP = "https://nominatim.openstreetmap.org/search?format=json&polygon_geojson=1&polygon_threshold=0.0003&city=%s&country=%s&email=hello@2140meetups.com&addressdetails=1&extratags=1";
 const COUNTRY_CODE = "https://countrycode.dev/api/countries/iso2/%s";
+const NOMINATIM_OPENSTREETMAP = "https://nominatim.openstreetmap.org/details.php?osmtype=R&osmid=%s&format=json&addressdetails=1&extratags=1&email=hello@2140meetups.com";
 const POLYGONS_OPENSTREETMAP = "https://polygons.openstreetmap.fr/get_geojson.py?id=%s&params=0.020000-0.005000-0.005000";
 const POLYGONS_OPENSTREETMAP_MAP_GENERATION = "https://polygons.openstreetmap.fr/?id=%s";
 
 // Deprecated
 // const NINJA_API_KEY defined in wp-config.php;
 // const CITY_NINJA = "https://api.api-ninjas.com/v1/city?name=%s";
+// const NOMINATIM_OPENSTREETMAP = "https://nominatim.openstreetmap.org/search?format=json&polygon_geojson=1&polygon_threshold=0.0003&city=%s&country=%s&email=hello@2140meetups.com&addressdetails=1&extratags=1";
 
 
 /* 
