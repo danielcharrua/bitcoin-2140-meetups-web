@@ -60,8 +60,7 @@ function request_remote_data($city, $country)
 function get_community_metadata($url, $city) 
 {
 	// Execute the request
-	$nominatim_response = make_get_request($url);
-	$location_metadata = json_decode($nominatim_response);
+	$location_metadata = make_get_request($url);
 	$osm_id = null;
 	
 	$nominatim_key = has_default_index($city);
@@ -79,26 +78,29 @@ function get_community_metadata($url, $city)
 		$country_code = $location_metadata[$nominatim_key]->address->country_code;
 		$url = sprintf(COUNTRY_CODE, strtoupper($country_code));
 		// Execute the request
-		$country_code_response = make_get_request($url);
+		$parsed_nominatim_result = make_get_request($url);
 		
-		$parsed_nominatim_result = json_decode($country_code_response);
-
+		$city = get_city($location_metadata[$nominatim_key]->address);
+		
+		$population_date = property_exists($location_metadata[$nominatim_key]->extratags, 'population:date') ? $location_metadata[$nominatim_key]->extratags->{'population:date'} : 'na';
+		
+		$nominatim_object = array(
+				"osm_id"	 		=> $osm_id,
+				"population"		=> $location_metadata[$nominatim_key]->extratags->population,
+				"population:date"	=> $population_date,
+				// Extra data
+				"address"	 		=> $city . ", " . $location_metadata[$nominatim_key]->address->country,
+		);
+			
 		if (
 			!empty($parsed_nominatim_result) && 
 			array_key_exists(0, $parsed_nominatim_result) &&
 			property_exists($parsed_nominatim_result[0], "continent")) 
 		{
-			$city = get_city($location_metadata[$nominatim_key]->address);
-
-			return array(
-				"osm_id"	 		=> $osm_id,
-				"continent"  		=> $parsed_nominatim_result[$nominatim_key]->continent,
-				"population"		=> $location_metadata[$nominatim_key]->extratags->population,
-				"population:date"	=> $location_metadata[$nominatim_key]->extratags->{'population:date'},
-				// Extra data
-				"address"	 		=> $city . ", " . $location_metadata[$nominatim_key]->address->country,
-			);
+			$nominatim_object["continent"] = $parsed_nominatim_result[$nominatim_key]->continent;
 		}
+		
+		return $nominatim_object;
 	}
 	return array(
 		"osm_id"	=> $osm_id,
@@ -144,12 +146,11 @@ function get_city_area($osm_id)
 	);
 	// We do not care the response because we just want that it would be avaible that area
 	// AIM: Create the need it area JSON file
-	make_post_request($POST_POLYGONS);
+	make_post_request($POST_POLYGONS, $body);
 
 	// Once the JSON of area is generated, request it
 	$GET_POLYGONS = sprintf(POLYGONS_OPENSTREETMAP, $osm_id);
-	$area_response = make_get_request($GET_POLYGONS);
-	$parsed_area_result = json_decode($area_response);
+	$parsed_area_result = make_get_request($GET_POLYGONS);
 
 	return array(
 		"geojson" => $parsed_area_result
@@ -293,7 +294,7 @@ function make_post_request($url, $body)
  */
 function update_btc_map_area_file($file_name, $json_area)
 {
-	file_put_contents(BTCMAPS_FOLDER . $file_name, $json_area);
+	file_put_contents(BTCMAP_FOLDER . $file_name, $json_area);
 }
 
 /**
@@ -301,7 +302,7 @@ function update_btc_map_area_file($file_name, $json_area)
  */
 function get_community_file($file_name)
 {
-	$community_json = file_get_contents(BTCMAPS_FOLDER . $file_name);
+	$community_json = file_get_contents(BTCMAP_FOLDER . $file_name);
 	// Decode the JSON file
 	$community = json_decode($community_json, true);
 	return $community;

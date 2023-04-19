@@ -17,7 +17,7 @@ function generate_area_from_btcmap($data)
     $local_data = extract_local_data($data);
     $btc_maps_community = merge_remote_and_local_data($remote_data, $local_data);
     // Before create the JSON file, clear up some attributes
-    unset($continent_object["osm_id"]);
+    unset($btc_maps_community["osm_id"]);
 
     // Decode the JSON file
     $btc_maps_json = json_encode($btc_maps_community, JSON_UNESCAPED_SLASHES);

@@ -44,7 +44,7 @@ const POLYGONS_OPENSTREETMAP_MAP_GENERATION = "https://polygons.openstreetmap.fr
 
 // Deprecated
 // const NINJA_API_KEY defined in wp-config.php;
-//const CITY_NINJA = "https://api.api-ninjas.com/v1/city?name=%s";
+// const CITY_NINJA = "https://api.api-ninjas.com/v1/city?name=%s";
 
 
 /* 
