@@ -82,14 +82,16 @@ function get_community_metadata($url, $city)
 		
 		$city = get_city($location_metadata[$nominatim_key]->address);
 		
-		$population_date = property_exists($location_metadata[$nominatim_key]->extratags, 'population:date') ? $location_metadata[$nominatim_key]->extratags->{'population:date'} : 'na';
+		$population_date = property_exists($location_metadata[$nominatim_key]->extratags, 'population:date') ?
+			$location_metadata[$nominatim_key]->extratags->{'population:date'} : 
+			'na';
 		
 		$nominatim_object = array(
-				"osm_id"	 		=> $osm_id,
-				"population"		=> $location_metadata[$nominatim_key]->extratags->population,
-				"population:date"	=> $population_date,
-				// Extra data
-				"address"	 		=> $city . ", " . $location_metadata[$nominatim_key]->address->country,
+			"osm_id"	 		=> $osm_id,
+			"population"		=> $location_metadata[$nominatim_key]->extratags->population,
+			"population:date"	=> $population_date,
+			// Extra data
+			"address"	 		=> $city . ", " . $location_metadata[$nominatim_key]->address->country,
 		);
 			
 		if (
