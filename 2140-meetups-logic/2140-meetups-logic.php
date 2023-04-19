@@ -649,7 +649,8 @@ function create_btcmap_area($post_id, $post, $update)
             "imagen"    => get_the_post_thumbnail_url($post_id, 'full'),
             "nombre"    => $post->post_title,
             "ciudad"    => get_post_meta($post_id, 'ciudad', true),
-            "pais"      => get_post_meta($post_id, 'pais', true)
+            "pais"      => get_post_meta($post_id, 'pais', true),
+            "osm_id"    => get_post_meta($post_id, 'osm_id', true)
         );
 
         generate_area_from_btcmap($data);
@@ -695,7 +696,8 @@ function btcmap_get_endpoint_loop_communities()
             "imagen"    => get_the_post_thumbnail_url($community->ID, 'full'),
             "nombre"    => $community->post_title,
             "ciudad"    => get_post_meta($community->ID, 'ciudad', true),
-            "pais"      => get_post_meta($community->ID, 'pais', true)
+            "pais"      => get_post_meta($community->ID, 'pais', true),
+            "osm_id"    => get_post_meta($community->ID, 'osm_id', true)
         );
 
         // Sleep for ten seconds if not nominatim complains, zZzZZzzz....
