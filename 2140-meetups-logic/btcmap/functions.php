@@ -10,9 +10,9 @@
 function generate_area_from_btcmap($data)
 {
     // Set the file name
-    $file_name = "btc_map_area_" . $row["id"] . ".json";
+    $file_name = "btc_map_area_" . $data["id"] . ".json";
     // Extract the info from different APIs
-    $remote_data = request_remote_data($row["osm_id"]);
+    $remote_data = request_remote_data($data["osm_id"]);
     // Extract from local data the missing attributes
     $local_data = extract_local_data($data);
     $btc_maps_community = merge_remote_and_local_data($remote_data, $local_data);

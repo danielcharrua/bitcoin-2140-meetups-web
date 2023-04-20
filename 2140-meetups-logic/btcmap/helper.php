@@ -36,16 +36,14 @@ function extract_local_data($community)
  * @param: country
  * return array
  */
-function request_remote_data($city, $country)
+function request_remote_data($osm_id)
 {
 	$URL_NOMINATIM = sprintf(NOMINATIM_OPENSTREETMAP, $osm_id);
-	$community_metadata = get_community_metadata($URL_NOMINATIM, $osm_id, $city);
+	$community_metadata = get_community_metadata($URL_NOMINATIM, $osm_id);
 
 	$geo_json_polygon = get_city_area($osm_id);
 
 	$remote_data = array_merge($community_metadata, $geo_json_polygon);
-
-	preview_remote_results($remote_data, $city, $country);
 
 	return $remote_data;
 }
@@ -54,7 +52,7 @@ function request_remote_data($city, $country)
  * Get the city population and continent
  * @param $url: The request url
  */
-function get_community_metadata($url, $osm_id, $city) 
+function get_community_metadata($url, $osm_id) 
 {
 	// Execute the request
 	$location_metadata = make_get_request($url);
@@ -65,7 +63,6 @@ function get_community_metadata($url, $osm_id, $city)
 		property_exists($location_metadata, "country_code") &&
 		property_exists($location_metadata, "extratags"))
 	{
-		print_r($location_metadata->extratags);
 		// Might not have the population date
 		$population_date = property_exists($location_metadata->extratags, "population:date") ? 
 			$location_metadata->extratags->{'population:date'} 
@@ -74,6 +71,7 @@ function get_community_metadata($url, $osm_id, $city)
 		$nominatim_object = array(
 			"population"		=> $location_metadata->extratags->population,
 			"population:date"	=> $population_date,
+			"continent" 	    => "",
 		);
 
 		$country_code = $location_metadata->country_code;
@@ -87,7 +85,7 @@ function get_community_metadata($url, $osm_id, $city)
 			array_key_exists(0, $parsed_nominatim_result) &&
 			property_exists($parsed_nominatim_result[0], "continent")) 
 		{
-			$nominatim_object["continent"] = $parsed_nominatim_result[$nominatim_key]->continent;
+			$nominatim_object["continent"] = $parsed_nominatim_result[0]->continent;
 		}
 		
 		return $nominatim_object;
