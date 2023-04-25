@@ -66,7 +66,7 @@ function get_community_metadata($url, $osm_id)
 		// Might not have the population date
 		$population_date = property_exists($location_metadata->extratags, "population:date") ? 
 			$location_metadata->extratags->{'population:date'} 
-			: 'na';
+			: null;
 
 		$nominatim_object = array(
 			"population"		=> $location_metadata->extratags->population,
