@@ -127,7 +127,7 @@ function get_city_area($osm_id)
 	$parsed_area_result = make_get_request($GET_POLYGONS);
 
 	return array(
-		"geojson" => $parsed_area_result
+		"geo_json" => $parsed_area_result
 	);
 }
 
