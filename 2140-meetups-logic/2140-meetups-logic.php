@@ -645,7 +645,7 @@ function create_btcmap_area($post_id, $post, $update)
         $data = array(
             "id"        => $post->ID,
             "id_btcmap" => sanitize_title(remove_emoji($post->post_title)),
-            "email"     => get_the_author_meta('email', $author_id),
+            "email"     => get_post_meta($post_id, 'email', true),
             "telegram"  => get_post_meta($post_id, 'telegram', true),
             "imagen"    => get_the_post_thumbnail_url($post_id, 'full'),
             "nombre"    => $post->post_title,
@@ -692,7 +692,7 @@ function btcmap_get_endpoint_loop_communities()
         $data = array(
             "id"        => $community->ID,
             "id_btcmap" => sanitize_title(remove_emoji($community->post_title)),
-            "email"     => get_the_author_meta('email', $author_id),
+            "email"     => get_post_meta($community->ID, 'email', true),
             "telegram"  => get_post_meta($community->ID, 'telegram', true),
             "imagen"    => get_the_post_thumbnail_url($community->ID, 'full'),
             "nombre"    => $community->post_title,
