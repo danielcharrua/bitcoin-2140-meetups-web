@@ -37,10 +37,10 @@ const PIN_SIZE = "medium";
 
 // btcmap integration constants
 define("BTCMAP_FOLDER", $upload_dir['basedir'] . '/btcmap/');
-const COUNTRY_CODE = "https://countrycode.dev/api/countries/iso2/%s";
 const NOMINATIM_OPENSTREETMAP = "https://nominatim.openstreetmap.org/details.php?osmtype=R&osmid=%s&format=json&addressdetails=1&extratags=1&email=hello@2140meetups.com";
 const POLYGONS_OPENSTREETMAP = "https://polygons.openstreetmap.fr/get_geojson.py?id=%s&params=0.020000-0.005000-0.005000";
 const POLYGONS_OPENSTREETMAP_MAP_GENERATION = "https://polygons.openstreetmap.fr/?id=%s";
+const CONTINENT_API = "https://restcountries.com/v3.1/name/%s";
 
 // Deprecated
 // const NINJA_API_KEY defined in wp-config.php;

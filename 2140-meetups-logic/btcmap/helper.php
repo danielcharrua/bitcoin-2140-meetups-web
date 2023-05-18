@@ -52,20 +52,20 @@ function request_remote_data($osm_id)
  * Get the city population and continent
  * @param $url: The request url
  */
-function get_community_metadata($url, $osm_id) 
+function get_community_metadata($url, $osm_id)
 {
 	// Execute the request
 	$location_metadata = make_get_request($url);
 
 	// Error control if we get the right nominatim response
 	if (
-		!empty($location_metadata) && 
+		!empty($location_metadata) &&
 		property_exists($location_metadata, "country_code") &&
-		property_exists($location_metadata, "extratags"))
-	{
+		property_exists($location_metadata, "extratags")
+	) {
 		// Might not have the population date
-		$population_date = property_exists($location_metadata->extratags, "population:date") ? 
-			$location_metadata->extratags->{'population:date'} 
+		$population_date = property_exists($location_metadata->extratags, "population:date") ?
+			$location_metadata->extratags->{'population:date'}
 			: null;
 
 		$nominatim_object = array(
@@ -74,26 +74,45 @@ function get_community_metadata($url, $osm_id)
 			"continent" 	    => "",
 		);
 
-		$country_code = $location_metadata->country_code;
-		$url = sprintf(COUNTRY_CODE, strtoupper($country_code));
+		// Before get the continent, find the country
+		$country = get_city_country($location_metadata);
+		if ($country != null){
+			$url = sprintf(CONTINENT_API, $country);
 
-		// Execute the request
-		$parsed_nominatim_result = make_get_request($url);
-			
-		if (
-			!empty($parsed_nominatim_result) && 
-			array_key_exists(0, $parsed_nominatim_result) &&
-			property_exists($parsed_nominatim_result[0], "continent")) 
-		{
-			$nominatim_object["continent"] = $parsed_nominatim_result[0]->continent;
-		}
-		
+			// Execute the request
+			$parsed_nominatim_result = make_get_request($url);
+
+			if (
+				!empty($parsed_nominatim_result) &&
+				array_key_exists(0, $parsed_nominatim_result) &&
+				property_exists($parsed_nominatim_result[0], "continents") &&
+				array_key_exists(0, $parsed_nominatim_result[0]->continents)
+			) {
+				$nominatim_object["continent"] = $parsed_nominatim_result[0]->continents[0];
+			}
+
+		} else {
+			$nominatim_object["continent"] = null;
+		}		
+
 		return $nominatim_object;
 	}
 	return array(
-		"continent" 	=> "",
-		"population"	=> ""
+		"continent" 	=> null,
+		"population"	=> null
 	);
+}
+
+function get_city_country($location_metadata)
+{
+	if (property_exists($location_metadata, "address")) {
+		foreach ($location_metadata->address as $key => $address) {
+			if ($address->type == "country") {
+				return $address->localname;
+			}
+		}
+	}
+	return null;
 }
 
 /**
@@ -143,13 +162,10 @@ function get_city_area($osm_id)
  */
 function make_get_request($url, $headers = array())
 {
-	if (!empty($headers))
-	{
-		$response = wp_remote_get( $url, $headers );
-	} 
-	else
-	{
-		$response = wp_remote_get( $url );
+	if (!empty($headers)) {
+		$response = wp_remote_get($url, $headers);
+	} else {
+		$response = wp_remote_get($url);
 	}
 	// Extract the body from the response
 	$body = wp_remote_retrieve_body($response);
@@ -164,9 +180,8 @@ function make_get_request($url, $headers = array())
 function make_post_request($url, $body)
 {
 	$response = wp_remote_post($url, $body);
-	
-	if ( is_wp_error( $response ) ) 
-	{
+
+	if (is_wp_error($response)) {
 		$error_message = $response->get_error_message();
 		//echo "Something went wrong: $error_message";
 	}
