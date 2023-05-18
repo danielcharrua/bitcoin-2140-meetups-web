@@ -76,7 +76,9 @@ function get_community_metadata($url, $osm_id)
 
 		// Before get the continent, find the country
 		$country = get_city_country($location_metadata);
-		if ($country != null){
+
+		if ($country != null)
+		{
 			$url = sprintf(CONTINENT_API, $country);
 
 			// Execute the request
@@ -86,12 +88,14 @@ function get_community_metadata($url, $osm_id)
 				!empty($parsed_nominatim_result) &&
 				array_key_exists(0, $parsed_nominatim_result) &&
 				property_exists($parsed_nominatim_result[0], "continents") &&
-				array_key_exists(0, $parsed_nominatim_result[0]->continents)
-			) {
+				array_key_exists(0, $parsed_nominatim_result[0]->continents)) 
+			{
 				$nominatim_object["continent"] = $parsed_nominatim_result[0]->continents[0];
 			}
 
-		} else {
+		} 
+		else
+		{
 			$nominatim_object["continent"] = null;
 		}		
 
@@ -103,12 +107,19 @@ function get_community_metadata($url, $osm_id)
 	);
 }
 
-function get_city_country($location_metadata)
+function get_city_country($location_metadata) 
 {
-	if (property_exists($location_metadata, "address")) {
-		foreach ($location_metadata->address as $key => $address) {
-			if ($address->type == "country") {
-				return $address->localname;
+	if (property_exists($location_metadata, "address")) 
+	{
+		foreach ($location_metadata->address as $key => $address)
+		{
+			if ($address->type == "country")
+			{
+				// Some country comes with slashes representing different way to say the country
+				// Delete also confusing spaces for the API at the beginning and end of the country
+				$split_slashes = trim(explode('/', $address->localname)[0]);
+				$delete_white_spaces = str_replace(' ', '%20', $split_slashes);
+				return delete_tilde($split_slashes);
 			}
 		}
 	}
@@ -153,6 +164,49 @@ function get_city_area($osm_id)
 // #######################################################
 // ############### HELPER FUNCTIONS ######################
 // #######################################################
+
+/**
+ * Some API endpoints does not understand tildes
+ * @param chain: The word that we want to edit 
+ */
+function delete_tilde($chain) 
+{
+	// We encode the string in utf8 format in case we get errors
+	//$chain = utf8_encode($chain);
+
+	// Now we replace the letters
+	$chain = str_replace(
+		array('á', 'à', 'ä', 'â', 'ª', 'Á', 'À', 'Â', 'Ä'),
+		array('a', 'a', 'a', 'a', 'a', 'A', 'A', 'A', 'A'),
+		$chain );
+
+	$chain = str_replace(
+		array('é', 'è', 'ë', 'ê', 'É', 'È', 'Ê', 'Ë'),
+		array('e', 'e', 'e', 'e', 'E', 'E', 'E', 'E'),
+		$chain );
+
+	$chain = str_replace(
+		array('í', 'ì', 'ï', 'î', 'Í', 'Ì', 'Ï', 'Î'),
+		array('i', 'i', 'i', 'i', 'I', 'I', 'I', 'I'),
+		$chain );
+
+	$chain = str_replace(
+		array('ó', 'ò', 'ö', 'ô', 'Ó', 'Ò', 'Ö', 'Ô'),
+		array('o', 'o', 'o', 'o', 'O', 'O', 'O', 'O'),
+		$chain );
+
+	$chain = str_replace(
+		array('ú', 'ù', 'ü', 'û', 'Ú', 'Ù', 'Û', 'Ü'),
+		array('u', 'u', 'u', 'u', 'U', 'U', 'U', 'U'),
+		$chain );
+
+	/*$chain = str_replace(
+		array('ñ', 'Ñ', 'ç', 'Ç'),
+		array('n', 'N', 'c', 'C'),
+		$chain );*/
+
+	return $chain;
+}
 
 /**
  * Create a generic utility to make remote calls
