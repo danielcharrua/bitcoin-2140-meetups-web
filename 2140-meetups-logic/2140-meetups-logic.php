@@ -47,10 +47,9 @@ const CONTINENT_API = "https://restcountries.com/v3.1/name/%s";
 // const CITY_NINJA = "https://api.api-ninjas.com/v1/city?name=%s";
 // const NOMINATIM_OPENSTREETMAP = "https://nominatim.openstreetmap.org/search?format=json&polygon_geojson=1&polygon_threshold=0.0003&city=%s&country=%s&email=hello@2140meetups.com&addressdetails=1&extratags=1";
 
-
-/* 
- * Backend - Limit users to see only posts they own 
- * 
+/*
+ * Backend - Limit users to see only posts they own
+ *
  * @link https://www.wpbeginner.com/plugins/how-to-limit-authors-to-their-own-posts-in-wordpress-admin/
  */
 function posts_for_current_author($query)
@@ -70,7 +69,7 @@ add_filter('pre_get_posts', 'posts_for_current_author');
 
 /*
  * Frontend - Populate address field only if editing (must exist the get parameter $_GET['cptid'])
- * 
+ *
  * @link https://docs.gravityforms.com/gform_field_value_parameter_name/
  */
 function populate_address($value, $field, $name)
@@ -96,7 +95,7 @@ add_filter('gform_field_value_address', 'populate_address', 10, 3);
 
 /*
  * Frontend - Populate city address field only if editing (must exist the get parameter $_GET['cptid'])
- * 
+ *
  * @link https://docs.gravityforms.com/gform_field_value_parameter_name/
  */
 function populate_city($value, $field, $name)
@@ -122,7 +121,7 @@ add_filter('gform_field_value_city', 'populate_city', 10, 3);
 
 /*
  * Frontend - Populate country address field only if editing (must exist the get parameter $_GET['cptid'])
- * 
+ *
  * @link https://docs.gravityforms.com/gform_field_value_parameter_name/
  */
 function populate_country($value, $field, $name)
@@ -148,7 +147,7 @@ add_filter('gform_field_value_country', 'populate_country', 10, 3);
 
 /*
  * Frontend - Dynamically Populating a Field with CPT
- * 
+ *
  * @link https://docs.gravityforms.com/dynamically-populating-drop-down-or-radio-buttons-fields/
  */
 function populate_communities($form)
@@ -182,7 +181,7 @@ add_filter('gform_pre_render_2', 'populate_communities');
 
 /*
  * Frontend - Dynamically Populating a Field with custom taxonomy
- * 
+ *
  * @link https://docs.gravityforms.com/dynamically-populating-drop-down-or-radio-buttons-fields/
  */
 function populate_cats($form)
@@ -216,15 +215,18 @@ function populate_cats($form)
 }
 add_filter('gform_pre_render_2', 'populate_cats');
 
-/* 
+/*
  * Frontend - Filter only future meetups and order them always by meetup date.
  * This will affect all CPTs queries in frontend but the user dashboard (it will show all meetups)
- * 
+ *
  * @link https://developer.wordpress.org/reference/hooks/pre_get_posts/
  */
 function filter_future_meetups_and_order($query)
 {
-    if (!is_admin() && !$query->is_main_query() && in_array($query->get('post_type'), array('meetup'))) {
+    if (!is_admin() && !$query->is_main_query() && in_array($query->get('post_type'), array('meetup')) && !defined('REST_REQUEST')) {
+
+        //if is not admin, not the main query, is meetup post type and is not a rest request...
+        //rest requests are filtered somewhere else with rest_meetup_query (functions.php)
 
         $query->set('meta_key', 'fecha');
         $query->set('orderby', 'meta_value');
@@ -248,9 +250,9 @@ function filter_future_meetups_and_order($query)
 }
 add_action('pre_get_posts', 'filter_future_meetups_and_order');
 
-/* 
- * Frontend - Limit users to see only posts they own. Used on https://2140meetups.com/home-usuario/ (ID 61) 
- * 
+/*
+ * Frontend - Limit users to see only posts they own. Used on https://2140meetups.com/home-usuario/ (ID 61)
+ *
  * @link https://developer.wordpress.org/reference/hooks/pre_get_posts/
  * This will only affect the CPTs queries
  */
@@ -274,9 +276,9 @@ function posts_for_current_author_for_user_home($query)
 }
 add_action('pre_get_posts', 'posts_for_current_author_for_user_home');
 
-/* 
- * Frontend - Limit users to see only meetup the community owns. Used when showing a singe meetup community 
- * 
+/*
+ * Frontend - Limit users to see only meetup the community owns. Used when showing a singe meetup community
+ *
  * @link https://developer.wordpress.org/reference/hooks/pre_get_posts/
  * This will only affect the CPTs queries
  */
@@ -309,7 +311,7 @@ add_action('pre_get_posts', 'limit_community_meetups_on_community_single');
 /**
  * Frontend - Edit post with "pods gravity addon"
  * @link https://docs.pods.io/code-snippets/using-pods-gravity-forms-addon-to-edit-specific-id/
- * 
+ *
  * Override the item ID that is edited by the Gravity Form when using a Pods feed.
  *
  * @param int    $edit_id  Edit ID.
@@ -377,7 +379,7 @@ function my_custom_pods_gf_prepopulate($prepopulate, $pod_name, $form_id, $feed,
 /*
  * Backend - Dont send email notifications when editing pods with gravity form
  * Also change email subject if is draft and editing for admin to acknowledge
- * 
+ *
  * @link https://docs.gravityforms.com/gform_pre_send_email/
  */
 function cancel_admin_notifications_on_edit($email, $message_format, $notification, $entry)
@@ -405,7 +407,7 @@ add_filter('gform_pre_send_email', 'cancel_admin_notifications_on_edit', 10, 4);
 
 /*
  * Frontend - Limit buttons on the rich text editor used by gravity
- * 
+ *
  * @link https://docs.gravityforms.com/gform_rich_text_editor_buttons/
  */
 function limit_gravity_mce($mce_buttons)
@@ -417,7 +419,7 @@ add_filter('gform_rich_text_editor_buttons', 'limit_gravity_mce', 10, 2);
 
 /*
  * Frontend - Make all text pasted in gravity tinymce as text (delete HTML tags)
- * 
+ *
  * @link https://anythinggraphic.net/paste-as-text-by-default-in-wordpress
  */
 
@@ -515,7 +517,7 @@ add_action('parse_request', 'wpse132196_redirect_after_trashing_get');
 
 /**
  * Backend - Assign community generic thumbnail if is not uploaded by user on post creation
- * 
+ *
  * @link https://developer.wordpress.org/reference/hooks/save_post/
  */
 function set_post_thumbnail_in_communities($post_id)
@@ -533,7 +535,7 @@ add_action('save_post_comunidad', 'set_post_thumbnail_in_communities');
 
 /**
  * Backend - Assign meetup generic thumbnail if is not uploaded by user on post creation
- * 
+ *
  * @link https://developer.wordpress.org/reference/hooks/save_post/
  */
 function set_post_thumbnail_in_meetups($post_id)
@@ -554,7 +556,7 @@ add_action('save_post_meetup', 'set_post_thumbnail_in_meetups');
 
 /**
  * Backend - Auto approve (publish) meetups if user has one community previously published
- * 
+ *
  * @link https://developer.wordpress.org/reference/hooks/wp_insert_post/
  * @link https://developer.wordpress.org/reference/functions/wp_update_post/
  */
@@ -643,7 +645,7 @@ function create_btcmap_area($post_id, $post, $update)
         $author_id = $post->post_author;
 
         $data = array(
-            "id"        => $post->ID,
+            "id"        => $post_id,
             "id_btcmap" => sanitize_title(remove_emoji($post->post_title)),
             "email"     => get_post_meta($post_id, 'email', true) ? get_post_meta($post_id, 'email', true) : null,
             "telegram"  => get_post_meta($post_id, 'telegram', true),
@@ -736,7 +738,7 @@ add_action('rest_api_init', 'btcmap_register_routes');
 
 /*
  * Frontend - block all users but admin to access the backend
- * 
+ *
  * @link https://blog.hubspot.com/website/how-to-limit-wordpress-dashboard-access
  */
 function blockusers_init()
@@ -750,7 +752,7 @@ add_action('init', 'blockusers_init');
 
 /*
  * Backend - disable image sizes
- * 
+ *
  * @link https://perishablepress.com/disable-wordpress-generated-images/
  */
 function shapeSpace_disable_thumbnail_images($sizes)
@@ -767,9 +769,9 @@ function shapeSpace_disable_thumbnail_images($sizes)
 add_action('intermediate_image_sizes_advanced', 'shapeSpace_disable_thumbnail_images');
 add_filter('big_image_size_threshold', '__return_false');
 
-/** 
+/**
  * Frontend - Removes empty paragraph tags from shortcodes in WordPress.
- * 
+ *
  * @link https://stackoverflow.com/questions/13510131/remove-empty-p-tags-from-wordpress-shortcodes-via-a-php-functon
  */
 function tg_remove_empty_paragraph_tags_from_shortcodes_wordpress($content)
@@ -783,7 +785,7 @@ function tg_remove_empty_paragraph_tags_from_shortcodes_wordpress($content)
 }
 add_filter('the_content', 'tg_remove_empty_paragraph_tags_from_shortcodes_wordpress');
 
-/** 
+/**
  * Frontend - Redirect shortcode
  */
 function redirect_shortcode($atts, $content)
@@ -805,9 +807,9 @@ function redirect_shortcode($atts, $content)
 }
 add_shortcode('redirect', 'redirect_shortcode');
 
-/** 
+/**
  * Backend - Trash meetups when community is trashed
- * 
+ *
  * @link https://developer.wordpress.org/reference/functions/wp_trash_post/
  */
 add_action('trashed_post', 'trash_community_meetups', 10, 1);
@@ -834,10 +836,10 @@ function trash_community_meetups($post_id)
     }
 }
 
-/** 
+/**
  * Backend - Delete meetups when community is deleted
  * Need to specify post_status because if posts are already in trash they are not being queried
- * 
+ *
  * @link https://wordpress.org/support/article/post-status/
  * @link https://developer.wordpress.org/reference/functions/wp_delete_post/
  */
@@ -864,7 +866,7 @@ function delete_community_meetups($post_id, $post)
     }
 }
 
-/* 
+/*
  * Backend - Enqueue download calendar js file.
  */
 function enqueue_calendar_js()
@@ -882,7 +884,7 @@ function enqueue_calendar_js()
 }
 add_action('wp_enqueue_scripts', 'enqueue_calendar_js');
 
-/* 
+/*
  * Frontend - Add ICS file download to meetups.
  */
 function download_meetup_ics_shortcode($atts)
@@ -944,7 +946,7 @@ function download_meetup_calendar_handler()
     $response = wp_remote_get($geoapify);
     $timezone = '';
 
-    if ( is_array( $response ) && ! is_wp_error( $response ) ) {
+    if (is_array($response) && !is_wp_error($response)) {
         $body = wp_remote_retrieve_body($response);
         $result = json_decode($body, true);
         $timezone = $result['results'][0]['timezone']['name'];
@@ -988,7 +990,7 @@ function remove_emoji($string)
     // Match Transport And Map Symbols
     $regex_transport = '/[\x{1F680}-\x{1F6FF}]/u';
     $clear_string = preg_replace($regex_transport, '', $clear_string);
-    
+
     // Match Supplemental Symbols and Pictographs
     $regex_supplemental = '/[\x{1F900}-\x{1F9FF}]/u';
     $clear_string = preg_replace($regex_supplemental, '', $clear_string);
